@@ -64,16 +64,7 @@ const int R9 = 31;
 //ModbusIP object
 ModbusIP mb;
 
-const int AllInputs[] = {A0, A1, A2, A3, A4, A5, A6, A7, A8, A9};
-const int AllCoils[] = {D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10/*, D11*/};
-
-// Modbus address map
-
-const unsigned int MB_DOUT = 1000;					// 1000-1011: Coils D0 to D11
-const unsigned int MB_AIN = 2000;					// 2000-2009: Discrete inputs A0 to A9
-
 // LDmicro Ladder interpreter
-
 LDmicro ldmicro;
 
 void switch_txrx(ModbusIP::txrx_mode mode)
@@ -96,37 +87,20 @@ void switch_txrx(ModbusIP::txrx_mode mode)
 
 void setup_MODBUS()
 {
+	
+	byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; // The media access control (ethernet hardware) address for the shield
+	byte ip[] = { 192, 168, 1, 241 }; // The IP address for the shield
+	mb.config(mac, ip); 	//Config Modbus IP
 	Controllino_RS485Init();
-	mb.configRelay(&Serial3, 9600, SERIAL_8N1, switch_txrx);	
+	mb.configRelay(&Serial3, 9600, SERIAL_8N1, switch_txrx);
+	ldmicro.SetModbus(&mb);
 }
 
 void setup() {
 	Serial.begin(115200);
-	customIO();        // Setup inputs and outputs for Controllino PLC
-
-	// The media access control (ethernet hardware) address for the shield
-	byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-	// The IP address for the shield
-	byte ip[] = { 192, 168, 1, 241 };
-	//Config Modbus IP
-	mb.config(mac, ip);
-
-	for (int r=0; r<sizeof(AllInputs); r++) {
-		mb.addIsts(MB_AIN+r);
-	}
-
-	for (int r=0; r<sizeof(AllCoils); r++) {
-		mb.addCoil(MB_DOUT+r);
-	}
-
+	customIO();			// Setup inputs and outputs for Controllino PLC
 	setup_MODBUS();
-	
-	// Test PWM
-	//analogWrite(D1, 64);
-
-	// Web server init
-	setup_PLC_Web();
-
+	setup_PLC_Web();	// Web server init
 	Serial.println("PLC ready");
 } 
 
@@ -143,21 +117,5 @@ void loop() {
 	in(enable);
 	timerCycle(AUX0, 200, AUX1, 100);
 	out(D11);
-	
-	for (int r=0; r<sizeof(AllInputs); r++) {
-		in(AllInputs[r]);
-		writeIstsMB(MB_AIN+r);
-	}
 
-/*
-	for (int r=0; r<sizeof(AllCoils); r++) {
-		readCoilMB(MB_DOUT+r);
-		out(AllCoils[r]);
-	}
-*/
-
-//	for (int r=0; r<sizeof(AllCoils); r++) {
-//		in(AllCoils[r]);
-//		writeCoilMB(MB_DOUT+r);
-//	}
 }

@@ -14,10 +14,14 @@ extern LDmicro ldmicro;
 static boolean index_handler(TinyWebServer& web_server);
 
 FLASH_STRING(index_html,
+	"<html><body>"
+	"<h2>LDuino PLC</h2>"
+	"(c) 2016 Frederic Rible (frible@teaser.fr)"
+	"<hr>"
 	"<form action = '/'"
 	"enctype = 'multipart/form-data' method = 'post'>"
 	"<br>"
-	"Please specify a file, or a set of files : <br>"
+	"Please specify a LDmicro XINT file : <br>"
 	"<input type = 'file' name = 'datafile' size = '40'>"
 	"<div>"
 	"<input type = 'submit' value = 'Send'>"
@@ -45,6 +49,7 @@ static void main_page(Client& client)
 	index_html.print(client);
 	client << "<br>PLC time: " << ldmicro.GetTime() << " ms";
 	client << "<br>PLC processing time: " << ldmicro.GetProcessingTime() << " us";
+	client << "</body></html>";
 }
 
 static boolean index_handler(TinyWebServer& web_server)
@@ -111,7 +116,7 @@ static void file_uploader_handler(TinyWebServer& web_server, TinyWebPutHandler::
 					st = in_data;
 					D(Serial.println("in_data"));
 					cb.flush();
-					ldmicro.ResetProgram();
+					ldmicro.ClearProgram();
 				}
 				else {
 					cb.pop();

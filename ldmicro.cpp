@@ -30,18 +30,25 @@
 
 LDmicro::LDmicro()
 {
-	ResetProgram();
+	mb = NULL;
+	Program = NULL;
+	IO = NULL;
+	ClearProgram();
 }
 
-void LDmicro::ResetProgram(void)
+void LDmicro::ClearProgram(void)
 {
 	ProgramReady = false;
 	LoaderState = st_init;
 	pc = 0;
 	line_length = 0;
 	time = 0;
-	memset(_Bits, 0, sizeof(_Bits));
-	memset(_Integers, 0, sizeof(_Integers));
+	nbProgram = 0;
+	nbIO = 0;
+	delete[] Program;
+	delete[] IO;
+	Program = NULL;
+	IO = NULL;
 }
 
 int LDmicro::HexDigit(int c)
@@ -58,36 +65,78 @@ int LDmicro::HexDigit(int c)
 	return -1;
 }
 
+LDmicro::state LDmicro::ChangeState(char * line)
+{
+	if (strstr(line, "$$LDcode")) LoaderState = st_LDcode;
+	else if (strstr(line, "$$IO")) LoaderState = st_IO;
+	else if (strstr(line, "$$cycle")) LoaderState = st_cycle;
+}
+
 void LDmicro::LoadProgramLine(char *line)
 {
 	line = strtok(line, "\r\n");
+	ChangeState(line);
+
 	switch (LoaderState) {
-		case st_init:
-		{
-			if (!strcmp(line, "$$LDcode")) LoaderState = st_bytecode;
-			break;
-		}
-		case st_bytecode:
+		case st_LDcode:
 		{
 			if (line[0] == '$') {
-				LoaderState = st_end;
+				// $$LDcode program_size
+				strtok(line, " ");
+				char *p = strtok(NULL, " ");
+				if (!p) break;
+				nbProgram = atoi(p);
+				Program = new BYTE[nbProgram];
+				D(Serial << "nbProgram=" << nbProgram << "\n");
 				break;
 			}
+			
 			for (char *t = line; t[0] >= 32 && t[1] >= 32; t += 2) {
 				Program[pc++] = HexDigit(t[1]) | (HexDigit(t[0]) << 4);
+				D(Serial << "New Opcode[" << pc - 1 << "]=" << Program[pc - 1] << '\n');
 			}
 			break;
 		}
-		case st_end:
-		{	
-			//$$cycle 10000 us
-			if (strstr(line, "$$cycle")) {
-				cycle_ms = atoi(line + 7) / 1000;
-				ProgramReady = true;
-				D(Serial.println("Program Ready"));
-				D(Serial.print("cycle time (ms): "));
-				D(Serial.println(cycle_ms));
+		case st_IO:
+		{
+			if (line[0] == '$') {
+				// $$IO nb_named_IO total_nb_IO
+				strtok(line, " ");
+				strtok(NULL, " ");
+				char *p = strtok(NULL, " ");
+				if (!p) break;
+				nbIO = atoi(p);
+				IO = new IO_t[nbIO];
+				D(Serial << "nbIO=" << nbIO << "\n");
+				break;
 			}
+
+			// 0 Xin 7 6 0 0
+			char *p;
+			p = strtok(line, " ");	// Addr
+			if (!p) break;
+			int addr = atoi(p);
+			if (addr < 0 || addr >= nbIO) break;
+			strtok(NULL, " ");	// Skip name
+			p = strtok(NULL, "");
+			if (!p) break;
+			sscanf(p, "%d %d %d %d", 
+					&IO[addr].Map.type, 
+					&IO[addr].Map.pin, 
+					&IO[addr].Map.ModbusSlave, 
+					&IO[addr].Map.ModbusRegister);
+			D(Serial << "New IO[" << addr << "]=" << p << '\n');
+			break;
+		}
+		case st_cycle:
+		{	
+			// $$cycle 10000 us
+			cycle_ms = atoi(line + 7) / 1000;
+			ConfigureModbus();
+			ProgramReady = true;
+			D(Serial.println("Program Ready"));
+			D(Serial.print("cycle time (ms): "));
+			D(Serial.println(cycle_ms));
 			break;
 		}
 	}
@@ -100,6 +149,26 @@ void LDmicro::LoadProgramLine(char c)
 		line[line_length] = 0;
 		LoadProgramLine(line);
 		line_length = 0;
+	}
+}
+
+void LDmicro::ConfigureModbus(void)
+{
+	if (!mb) return;
+
+	for (int addr = 0; addr < MAX_VARIABLES; addr++) {
+		if (!IO[addr].Map.type) break;
+		switch (IO[addr].Map.type) {
+		case IO_TYPE_MODBUS_COIL:
+			mb->addCoil(IO[addr].Map.ModbusRegister);
+			break;
+		case IO_TYPE_MODBUS_CONTACT:
+			mb->addIsts(IO[addr].Map.ModbusRegister - 10001);
+			break;
+		case IO_TYPE_MODBUS_HREG:
+			mb->addHreg(IO[addr].Map.ModbusRegister - 40001);
+			break;
+		}
 	}
 }
 
@@ -237,34 +306,62 @@ void LDmicro::Engine(void)
 	}
 }
 
-void LDmicro::WRITE_BIT(int addr, boolean value)
+void LDmicro::WRITE_BIT(BYTE addr, boolean value)
 {
-	if (addr < XINTERNAL_OFFSET) digitalWrite(addr, value);
-	_Bits[addr] = value;
+	switch (IO[addr].Map.type) {
+	case IO_TYPE_DIG_OUTPUT:
+		digitalWrite(IO[addr].Map.pin, value);
+		break;
+	case IO_TYPE_MODBUS_COIL:
+		if (mb) mb->Coil(IO[addr].Map.ModbusRegister, value);
+		break;
+	}
+
+	IO[addr].Value = value;
 	D(Serial << "write bit[" << addr << "] " << value << "\n");
 }
 
-boolean LDmicro::READ_BIT(int addr)
+boolean LDmicro::READ_BIT(BYTE  addr)
 {
-	boolean rc;
-	if (addr < XINTERNAL_OFFSET) rc = digitalRead(addr);
-	else rc = _Bits[addr];
-	D(Serial << "read  bit[" << addr << "] " << rc << "\n");
-	return rc;
+	switch (IO[addr].Map.type) {
+	case IO_TYPE_DIG_INPUT:
+		IO[addr].Value = digitalRead(IO[addr].Map.pin);
+		break;
+	case IO_TYPE_MODBUS_COIL:
+		if (mb) IO[addr].Value = mb->Coil(IO[addr].Map.ModbusRegister);
+		break;
+	}
+
+	D(Serial << "read  bit[" << addr << "] " << IO[addr].Value << "\n");
+	return IO[addr].Value;
 }
 
-void LDmicro::WRITE_INT(int addr, SWORD value)
+void LDmicro::WRITE_INT(BYTE  addr, SWORD value)
 {
-	if (addr < XINTERNAL_OFFSET) analogWrite(addr, value);
-	_Integers[addr] = value;
+	switch (IO[addr].Map.type) {
+	case IO_TYPE_PWM_OUTPUT:
+		analogWrite(IO[addr].Map.pin, value);
+		break;
+	case IO_TYPE_MODBUS_HREG:
+		if (mb) mb->Hreg(IO[addr].Map.ModbusRegister - 40001, value);
+		break;
+	}
+
+	IO[addr].Value = value;
 	D(Serial << "write int[" << addr << "] " << value << "\n");
 }
 
-LDmicro::SWORD LDmicro::READ_INT(int addr)
+LDmicro::SWORD LDmicro::READ_INT(BYTE  addr)
 {
-	SWORD rc;
-	if (addr < XINTERNAL_OFFSET) rc = analogRead(addr);
-	else rc = _Integers[addr];
-	D(Serial << "read  int[" << addr << "] " << rc << "\n");
-	return rc;
+	switch (IO[addr].Map.type) {
+	case IO_TYPE_READ_ADC:
+		IO[addr].Value = analogRead(IO[addr].Map.pin);
+		break;
+	case IO_TYPE_MODBUS_HREG:
+		if (mb) IO[addr].Value = mb->Hreg(IO[addr].Map.ModbusRegister - 40001);
+		break;
+	}
+
+	D(Serial << "read  int[" << addr << "] " << IO[addr].Value << "\n");
+	return IO[addr].Value;
 }
