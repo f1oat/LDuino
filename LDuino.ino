@@ -1,11 +1,8 @@
 #include <Streaming.h>
-#include "ldmicro.h"
-#include "ldmicro.h"
 #include <TextFinder.h>
 #include <SD.h>
 #include <Flash.h>
 #define noPinDefs         // Disable default pin definitions (X0, X1, ..., Y0, Y1, ...)
-#include <plcLib.h>       // Load the PLC library
 
 #include <SPI.h>
 #include <Ethernet.h>
@@ -14,7 +11,7 @@
 #include <Controllino.h>
 
 #include "plcweb.h"
-#include "ldmicro.h"
+#include "lduino_engine.h"
 
 /* Programmable Logic Controller Library for the Arduino and Compatibles
 
@@ -65,7 +62,7 @@ const int R9 = 31;
 ModbusIP mb;
 
 // LDmicro Ladder interpreter
-LDmicro ldmicro;
+LDuino_engine lduino;
 
 void switch_txrx(ModbusIP::txrx_mode mode)
 {
@@ -93,7 +90,7 @@ void setup_MODBUS()
 	mb.config(mac, ip); 	//Config Modbus IP
 	Controllino_RS485Init();
 	mb.configRelay(&Serial3, 9600, SERIAL_8N1, switch_txrx);
-	ldmicro.SetModbus(&mb);
+	lduino.SetModbus(&mb);
 }
 
 void setup() {
@@ -104,18 +101,8 @@ void setup() {
 	Serial.println("PLC ready");
 } 
 
-// Variables:
-unsigned long AUX0 = 0;                 // Pulse low timer variable
-unsigned long AUX1 = 0;                 // Pulse high timer variable
-unsigned int enable = 1;
-
 void loop() {
 	mb.task();
 	poll_PLC_Web();
-	ldmicro.Engine();
-
-	in(enable);
-	timerCycle(AUX0, 200, AUX1, 100);
-	out(D11);
-
+	lduino.Engine();
 }

@@ -1,8 +1,21 @@
-// 
-// 
-// 
+// Copyright 2016 Frederic Rible
+//
+// This file is part of LDuino, an Arduino based PLC software compatible with LDmicro.
+//
+// LDuino is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// LDuino is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with LDmicro.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "ldmicro.h"
+#include "lduino_engine.h"
 
 #define INT_SET_BIT                              1
 #define INT_CLEAR_BIT                            2
@@ -28,7 +41,7 @@
 
 #define INT_END_OF_PROGRAM                     255
 
-LDmicro::LDmicro()
+LDuino_engine::LDuino_engine()
 {
 	mb = NULL;
 	Program = NULL;
@@ -36,7 +49,7 @@ LDmicro::LDmicro()
 	ClearProgram();
 }
 
-void LDmicro::ClearProgram(void)
+void LDuino_engine::ClearProgram(void)
 {
 	ProgramReady = false;
 	LoaderState = st_init;
@@ -51,7 +64,7 @@ void LDmicro::ClearProgram(void)
 	IO = NULL;
 }
 
-int LDmicro::HexDigit(int c)
+int LDuino_engine::HexDigit(int c)
 {
 	if ((c >= '0') && (c <= '9')) {
 		return c - '0';
@@ -65,14 +78,14 @@ int LDmicro::HexDigit(int c)
 	return -1;
 }
 
-LDmicro::state LDmicro::ChangeState(char * line)
+LDuino_engine::state LDuino_engine::ChangeState(char * line)
 {
 	if (strstr(line, "$$LDcode")) LoaderState = st_LDcode;
 	else if (strstr(line, "$$IO")) LoaderState = st_IO;
 	else if (strstr(line, "$$cycle")) LoaderState = st_cycle;
 }
 
-void LDmicro::LoadProgramLine(char *line)
+void LDuino_engine::LoadProgramLine(char *line)
 {
 	line = strtok(line, "\r\n");
 	ChangeState(line);
@@ -124,7 +137,7 @@ void LDmicro::LoadProgramLine(char *line)
 					&IO[addr].Map.type, 
 					&IO[addr].Map.pin, 
 					&IO[addr].Map.ModbusSlave, 
-					&IO[addr].Map.ModbusRegister);
+					&IO[addr].Map.ModbusOffset);
 			D(Serial << "New IO[" << addr << "]=" << p << '\n');
 			break;
 		}
@@ -142,7 +155,7 @@ void LDmicro::LoadProgramLine(char *line)
 	}
 }
 
-void LDmicro::LoadProgramLine(char c)
+void LDuino_engine::LoadProgramLine(char c)
 {
 	if (line_length < sizeof(line)) line[line_length++] = c;
 	if (c == '\n' && line_length > 0) {
@@ -152,27 +165,26 @@ void LDmicro::LoadProgramLine(char c)
 	}
 }
 
-void LDmicro::ConfigureModbus(void)
+void LDuino_engine::ConfigureModbus(void)
 {
 	if (!mb) return;
 
-	for (int addr = 0; addr < MAX_VARIABLES; addr++) {
-		if (!IO[addr].Map.type) break;
+	for (int addr = 0; addr < nbIO; addr++) {
 		switch (IO[addr].Map.type) {
 		case IO_TYPE_MODBUS_COIL:
-			mb->addCoil(IO[addr].Map.ModbusRegister);
+			mb->addCoil(IO[addr].Map.ModbusOffset);
 			break;
 		case IO_TYPE_MODBUS_CONTACT:
-			mb->addIsts(IO[addr].Map.ModbusRegister - 10001);
+			mb->addIsts(IO[addr].Map.ModbusOffset);
 			break;
 		case IO_TYPE_MODBUS_HREG:
-			mb->addHreg(IO[addr].Map.ModbusRegister - 40001);
+			mb->addHreg(IO[addr].Map.ModbusOffset);
 			break;
 		}
 	}
 }
 
-void LDmicro::InterpretOneCycle(void)
+void LDuino_engine::InterpretOneCycle(void)
 {
 	if (!ProgramReady) return;
 
@@ -232,10 +244,12 @@ void LDmicro::InterpretOneCycle(void)
 			break;
 
 		case INT_SET_PWM:
+			WRITE_PWM(Program[pc + 1]);	 // PWM frequency is ignored
 			pc += 4;
 			break;
 
 		case INT_READ_ADC:
+			READ_ADC(Program[pc + 1]);
 			pc += 2;
 			break;
 
@@ -285,7 +299,7 @@ void LDmicro::InterpretOneCycle(void)
 	}
 }
 
-void LDmicro::Engine(void)
+void LDuino_engine::Engine(void)
 {
 	int count = 10;
 
@@ -306,14 +320,16 @@ void LDmicro::Engine(void)
 	}
 }
 
-void LDmicro::WRITE_BIT(BYTE addr, boolean value)
+void LDuino_engine::WRITE_BIT(BYTE addr, boolean value)
 {
+	if (IO[addr].Value == value) return;
+
 	switch (IO[addr].Map.type) {
 	case IO_TYPE_DIG_OUTPUT:
 		digitalWrite(IO[addr].Map.pin, value);
 		break;
 	case IO_TYPE_MODBUS_COIL:
-		if (mb) mb->Coil(IO[addr].Map.ModbusRegister, value);
+		if (mb) mb->Coil(IO[addr].Map.ModbusOffset, value);
 		break;
 	}
 
@@ -321,47 +337,53 @@ void LDmicro::WRITE_BIT(BYTE addr, boolean value)
 	D(Serial << "write bit[" << addr << "] " << value << "\n");
 }
 
-boolean LDmicro::READ_BIT(BYTE  addr)
+boolean LDuino_engine::READ_BIT(BYTE  addr)
 {
 	switch (IO[addr].Map.type) {
 	case IO_TYPE_DIG_INPUT:
 		IO[addr].Value = digitalRead(IO[addr].Map.pin);
 		break;
 	case IO_TYPE_MODBUS_COIL:
-		if (mb) IO[addr].Value = mb->Coil(IO[addr].Map.ModbusRegister);
+		if (mb) IO[addr].Value = mb->Coil(IO[addr].Map.ModbusOffset);
 		break;
 	}
 
-	D(Serial << "read  bit[" << addr << "] " << IO[addr].Value << "\n");
+	D(Serial << "read  bit[" << addr << "] " << IO[addr].Value << '\n');
 	return IO[addr].Value;
 }
 
-void LDmicro::WRITE_INT(BYTE  addr, SWORD value)
+void LDuino_engine::WRITE_INT(BYTE  addr, SWORD value)
 {
+	if (IO[addr].Value == value) return;
+
 	switch (IO[addr].Map.type) {
-	case IO_TYPE_PWM_OUTPUT:
-		analogWrite(IO[addr].Map.pin, value);
-		break;
 	case IO_TYPE_MODBUS_HREG:
-		if (mb) mb->Hreg(IO[addr].Map.ModbusRegister - 40001, value);
+		if (mb) mb->Hreg(IO[addr].Map.ModbusOffset, value);
 		break;
 	}
 
 	IO[addr].Value = value;
-	D(Serial << "write int[" << addr << "] " << value << "\n");
+	D(Serial << "write int[" << addr << "] " << value << '\n');
 }
 
-LDmicro::SWORD LDmicro::READ_INT(BYTE  addr)
+LDuino_engine::SWORD LDuino_engine::READ_INT(BYTE  addr)
 {
 	switch (IO[addr].Map.type) {
-	case IO_TYPE_READ_ADC:
-		IO[addr].Value = analogRead(IO[addr].Map.pin);
-		break;
 	case IO_TYPE_MODBUS_HREG:
-		if (mb) IO[addr].Value = mb->Hreg(IO[addr].Map.ModbusRegister - 40001);
+		if (mb) IO[addr].Value = mb->Hreg(IO[addr].Map.ModbusOffset);
 		break;
 	}
 
-	D(Serial << "read  int[" << addr << "] " << IO[addr].Value << "\n");
+	D(Serial << "read  int[" << addr << "] " << IO[addr].Value << '\n');
 	return IO[addr].Value;
+}
+
+void LDuino_engine::WRITE_PWM(BYTE addr)
+{
+	analogWrite(IO[addr].Map.pin, IO[addr].Value);
+}
+
+void LDuino_engine::READ_ADC(BYTE addr)
+{
+	IO[addr].Value = analogRead(IO[addr].Map.pin);
 }

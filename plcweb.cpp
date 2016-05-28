@@ -8,9 +8,9 @@
 #include "TinyWebServer.h"
 #include "plcweb.h"
 #include "CircularBuffer.h"
-#include "ldmicro.h"
+#include "lduino_engine.h"
 
-extern LDmicro ldmicro;
+extern LDuino_engine lduino;
 static boolean index_handler(TinyWebServer& web_server);
 
 FLASH_STRING(index_html,
@@ -47,8 +47,8 @@ static TinyWebServer web = TinyWebServer(handlers, headers);
 static void main_page(Client& client)
 {
 	index_html.print(client);
-	client << "<br>PLC time: " << ldmicro.GetTime() << " ms";
-	client << "<br>PLC processing time: " << ldmicro.GetProcessingTime() << " us";
+	client << "<br>PLC time: " << lduino.GetTime() << " ms";
+	client << "<br>PLC processing time: " << lduino.GetProcessingTime() << " us";
 	client << "</body></html>";
 }
 
@@ -116,7 +116,7 @@ static void file_uploader_handler(TinyWebServer& web_server, TinyWebPutHandler::
 					st = in_data;
 					D(Serial.println("in_data"));
 					cb.flush();
-					ldmicro.ClearProgram();
+					lduino.ClearProgram();
 				}
 				else {
 					cb.pop();
@@ -132,7 +132,7 @@ static void file_uploader_handler(TinyWebServer& web_server, TinyWebPutHandler::
 				else {
 					char c = cb.pop();
 					file_size++;
-					ldmicro.LoadProgramLine(c);
+					lduino.LoadProgramLine(c);
 				}
 				break;
 			};

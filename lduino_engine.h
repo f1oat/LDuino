@@ -1,4 +1,19 @@
-// ldmicro.h
+// Copyright 2016 Frederic Rible
+//
+// This file is part of LDuino, an Arduino based PLC software compatible with LDmicro.
+//
+// LDuino is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// LDuino is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with LDmicro.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef _LDMICRO_h
 #define _LDMICRO_h
@@ -23,9 +38,9 @@
 #define D(x)
 #endif
 
-class LDmicro {
+class LDuino_engine {
 public:
-	LDmicro();
+	LDuino_engine();
 	void ClearProgram(void);
 	int HexDigit(int c);
 	void SetModbus(Modbus *mb) { this->mb = mb; }
@@ -65,7 +80,7 @@ private:
 		BYTE    type;
 		BYTE    pin;
 		BYTE	ModbusSlave;
-		WORD	ModbusRegister;
+		WORD	ModbusOffset;
 	} Map_IO_t;
 
 	typedef struct IO_Var_s {
@@ -77,6 +92,8 @@ private:
 	boolean READ_BIT(BYTE addr);
 	void WRITE_INT(BYTE addr, SWORD value);
 	SWORD READ_INT(BYTE addr);
+	void WRITE_PWM(BYTE addr);
+	void READ_ADC(BYTE addr);
 
 	Modbus *mb;
 
