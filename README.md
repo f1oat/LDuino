@@ -22,7 +22,6 @@ LDuino currently supports:
   * This gateway can be used to access RS485 slave devices connected to the PLC from a master connected by Ethernet
 
 [ MODBUS master ] -- Ethernet link -- [ Controllino PLC ] -- RS485 bus -- [ Additional slave devices ]
-                                      [    local I/O    ]                 [        local I/O         ]
 
 Up to now, the PLC cannot act as a MODBUS master device.
 The PLC, as any other device connected to the RS485 PLC port, is a slave device controlled by the MODBUS master equipment
