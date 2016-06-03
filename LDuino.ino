@@ -2,68 +2,31 @@
 #include <TextFinder.h>
 #include <SD.h>
 #include <Flash.h>
+#include <avr/wdt.h>
+#include <TimerOne.h>
+
 #define noPinDefs         // Disable default pin definitions (X0, X1, ..., Y0, Y1, ...)
 
 #include <SPI.h>
 #include <Ethernet.h>
-#include <Modbus.h>
-#include <ModbusIP.h>
 #include <Controllino.h>
+#include <EEPROM.h>
 
+#include "Modbus.h"
+#include "ModbusIP.h""
 #include "plcweb.h"
 #include "lduino_engine.h"
-
-/* Programmable Logic Controller Library for the Arduino and Compatibles
-
-Controllino Maxi PLC - Use of default pin names and numbers
-Product information: http://controllino.cc
-
-Connections:
-Inputs connected to pins A0 - A9, plus interrupts IN0 and IN1
-Digital outputs connected to pins D0 to D11
-Relay outputs connected to pins R0 to R9
-
-Software and Documentation:
-http://www.electronics-micros.com/software-hardware/plclib-arduino/
-
-*/
-
-// Pins A0 - A9 are configured automatically
-
-// Interrupt pins
-const int IN0 = 18;
-const int IN1 = 19;
-
-const int D0 = 2;
-const int D1 = 3;
-const int D2 = 4;
-const int D3 = 5;
-const int D4 = 6;
-const int D5 = 7;
-const int D6 = 8;
-const int D7 = 9;
-const int D8 = 10;
-const int D9 = 11;
-const int D10 = 12;
-const int D11 = 13;
-
-const int R0 = 22;
-const int R1 = 23;
-const int R2 = 24;
-const int R3 = 25;
-const int R4 = 26;
-const int R5 = 27;
-const int R6 = 28;
-const int R7 = 29;
-const int R8 = 30;
-const int R9 = 31;
+#include "Config.h"
 
 //ModbusIP object
 ModbusIP mb;
 
 // LDmicro Ladder interpreter
 LDuino_engine lduino;
+IP_Config_t IP_Config;;
+bool doReset = false;
 
+#ifdef CONTROLLINO_MAXI
 void switch_txrx(ModbusIP::txrx_mode mode)
 {
 	switch (mode) {
@@ -81,28 +44,64 @@ void switch_txrx(ModbusIP::txrx_mode mode)
 		break;
 	}
 }
+#endif
 
 void setup_MODBUS()
 {
-	
-	byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; // The media access control (ethernet hardware) address for the shield
-	byte ip[] = { 192, 168, 1, 241 }; // The IP address for the shield
-	mb.config(mac, ip); 	//Config Modbus IP
+	mb.config(); 	//Config Modbus IP
+#ifdef CONTROLLINO_MAXI
 	Controllino_RS485Init();
 	mb.configRelay(&Serial3, 9600, SERIAL_8N1, switch_txrx);
+#endif
 	lduino.SetModbus(&mb);
+}
+
+
+void pollPLC()
+{
+	lduino.Engine();
 }
 
 void setup() {
 	Serial.begin(115200);
+
+	IP_Config.LoadConfig();
+
+	if (IP_Config.useDHCP) {
+		Serial << F("Trying DHCP ...\n");
+		if (!Ethernet.begin(IP_Config.mac_address)) {
+			Serial << F("DHCP failure\n");
+		}
+		else {
+			IP_Config.local_ip = Ethernet.localIP();
+			IP_Config.subnet = Ethernet.subnetMask();
+			IP_Config.dns_server = Ethernet.dnsServerIP();
+			IP_Config.gateway = Ethernet.gatewayIP();
+		}
+	}
+
+	if (!IP_Config.useDHCP || Ethernet.localIP() == INADDR_NONE) {
+		Ethernet.begin(IP_Config.mac_address, IP_Config.local_ip, IP_Config.dns_server, IP_Config.gateway, IP_Config.subnet);
+	}
+
 	customIO();			// Setup inputs and outputs for Controllino PLC
 	setup_MODBUS();
 	setup_PLC_Web();	// Web server init
-	Serial.println("PLC ready");
+
+	Timer1.initialize(10000);	//TODO: use cycle time defined in XINT program
+	Timer1.attachInterrupt(pollPLC);
+
+	Serial << F("PLC ready\n");
+	Serial << F("IP: ") << Ethernet.localIP() << '\n';
 } 
 
 void loop() {
 	mb.task();
 	poll_PLC_Web();
-	lduino.Engine();
+	//lduino.Engine();
+	if (doReset) {
+		Serial << "Reset requested\n";
+		wdt_enable(WDTO_1S);
+		for (;;);
+	}
 }

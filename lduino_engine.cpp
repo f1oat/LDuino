@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with LDmicro.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "Config.h"
 #include "lduino_engine.h"
 
 #define INT_SET_BIT                              1
@@ -46,7 +47,10 @@ LDuino_engine::LDuino_engine()
 	mb = NULL;
 	Program = NULL;
 	IO = NULL;
+	Values = NULL;
 	ClearProgram();
+	EEPROM_ProgramLen = 0;
+	LoadConfig();
 }
 
 void LDuino_engine::ClearProgram(void)
@@ -58,10 +62,13 @@ void LDuino_engine::ClearProgram(void)
 	time = 0;
 	nbProgram = 0;
 	nbIO = 0;
-	delete[] Program;
-	delete[] IO;
+	total_nbIO = 0;
+	if (Program) delete[] Program;
+	if (IO) delete[] IO;
+	if (Values) delete[] Values;
 	Program = NULL;
 	IO = NULL;
+	Values = NULL;
 }
 
 int LDuino_engine::HexDigit(int c)
@@ -80,9 +87,11 @@ int LDuino_engine::HexDigit(int c)
 
 LDuino_engine::state LDuino_engine::ChangeState(char * line)
 {
+	if (LoaderState == st_error) return st_error;
 	if (strstr(line, "$$LDcode")) LoaderState = st_LDcode;
 	else if (strstr(line, "$$IO")) LoaderState = st_IO;
 	else if (strstr(line, "$$cycle")) LoaderState = st_cycle;
+	return LoaderState;
 }
 
 void LDuino_engine::LoadProgramLine(char *line)
@@ -97,9 +106,9 @@ void LDuino_engine::LoadProgramLine(char *line)
 				// $$LDcode program_size
 				strtok(line, " ");
 				char *p = strtok(NULL, " ");
-				if (!p) break;
+				if (!p) goto err;
 				nbProgram = atoi(p);
-				Program = new BYTE[nbProgram];
+				Program = new BYTE[nbProgram]();
 				D(Serial << "nbProgram=" << nbProgram << "\n");
 				break;
 			}
@@ -115,29 +124,35 @@ void LDuino_engine::LoadProgramLine(char *line)
 			if (line[0] == '$') {
 				// $$IO nb_named_IO total_nb_IO
 				strtok(line, " ");
-				strtok(NULL, " ");
+
 				char *p = strtok(NULL, " ");
-				if (!p) break;
+				if (!p) goto err;
 				nbIO = atoi(p);
-				IO = new IO_t[nbIO];
-				D(Serial << "nbIO=" << nbIO << "\n");
+				IO = new IO_t[nbIO]();
+				
+				p = strtok(NULL, " ");
+				if (!p) goto err;
+				total_nbIO = atoi(p);
+				Values = new SWORD[total_nbIO]();
+
+				D(Serial << "nbIO=" << nbIO << " total_nbIO=" << total_nbIO << "\n");
 				break;
 			}
 
 			// 0 Xin 7 6 0 0
 			char *p;
 			p = strtok(line, " ");	// Addr
-			if (!p) break;
+			if (!p) goto err;
 			int addr = atoi(p);
-			if (addr < 0 || addr >= nbIO) break;
+			if (addr < 0 || addr >= nbIO) goto err;
 			strtok(NULL, " ");	// Skip name
 			p = strtok(NULL, "");
-			if (!p) break;
+			if (!p) goto err;
 			sscanf(p, "%d %d %d %d", 
-					&IO[addr].Map.type, 
-					&IO[addr].Map.pin, 
-					&IO[addr].Map.ModbusSlave, 
-					&IO[addr].Map.ModbusOffset);
+					&IO[addr].type, 
+					&IO[addr].pin, 
+					&IO[addr].ModbusSlave, 
+					&IO[addr].ModbusOffset);
 			D(Serial << "New IO[" << addr << "]=" << p << '\n');
 			break;
 		}
@@ -150,9 +165,16 @@ void LDuino_engine::LoadProgramLine(char *line)
 			D(Serial.println("Program Ready"));
 			D(Serial.print("cycle time (ms): "));
 			D(Serial.println(cycle_ms));
+			SaveConfig();
 			break;
 		}
 	}
+
+	return;
+
+err:
+	LoaderState = st_error;
+	return;
 }
 
 void LDuino_engine::LoadProgramLine(char c)
@@ -170,15 +192,15 @@ void LDuino_engine::ConfigureModbus(void)
 	if (!mb) return;
 
 	for (int addr = 0; addr < nbIO; addr++) {
-		switch (IO[addr].Map.type) {
+		switch (IO[addr].type) {
 		case IO_TYPE_MODBUS_COIL:
-			mb->addCoil(IO[addr].Map.ModbusOffset);
+			mb->addCoil(IO[addr].ModbusOffset);
 			break;
 		case IO_TYPE_MODBUS_CONTACT:
-			mb->addIsts(IO[addr].Map.ModbusOffset);
+			mb->addIsts(IO[addr].ModbusOffset);
 			break;
 		case IO_TYPE_MODBUS_HREG:
-			mb->addHreg(IO[addr].Map.ModbusOffset);
+			mb->addHreg(IO[addr].ModbusOffset);
 			break;
 		}
 	}
@@ -320,70 +342,151 @@ void LDuino_engine::Engine(void)
 	}
 }
 
-void LDuino_engine::WRITE_BIT(BYTE addr, boolean value)
+void LDuino_engine::PrintStats(Print & stream)
 {
-	if (IO[addr].Value == value) return;
+	stream << F("Program running: ") << (ProgramReady ? F("yes") : F("no")) << '\n'; 
+	stream << F("EEPROM:          ") << EEPROM_ProgramLen << '/' << EEPROM.length() << F(" bytes used\n");
+	stream << F("Opcodes:         ") << nbProgram << '\n';
+	stream << F("IO vars:         ") << nbIO << '\n';
+	stream << F("Internal vars:   ") << total_nbIO - nbIO << '\n';
+	stream << F("Cycle:           ") << cycle_ms << F(" ms\n");
+	stream << F("Processing time: ") << processing_time << F(" us\n");
+	
+	stream << F("\nVariables dump\n");
+	
+	for (int i = 0; i < total_nbIO; i++) {
+		char buf[20];
+		sprintf(buf, "%3d: %6d", i, Values[i]);
+		stream << buf << "\n";
+	}
+}
 
-	switch (IO[addr].Map.type) {
-	case IO_TYPE_DIG_OUTPUT:
-		digitalWrite(IO[addr].Map.pin, value);
-		break;
-	case IO_TYPE_MODBUS_COIL:
-		if (mb) mb->Coil(IO[addr].Map.ModbusOffset, value);
-		break;
+void LDuino_engine::SaveConfig()
+{
+	int p = PROGRAM_OFFSET;
+
+	version = PLC_VERSION;
+	EEWRITE(version);
+	EEWRITE(cycle_ms);
+	EEWRITE(nbProgram);
+	EEWRITE(nbIO);
+	EEWRITE(total_nbIO);
+
+	for (int i = 0; i < nbIO; i++) {
+		EEWRITE(IO[i]);
 	}
 
-	IO[addr].Value = value;
+	for (int i = 0; i < nbProgram; i++) {
+		EEWRITE(Program[i]);
+	}
+
+	EEPROM_ProgramLen = p;
+	UpdateCRC();
+}
+
+void LDuino_engine::LoadConfig()
+{
+	int p = PROGRAM_OFFSET;
+
+	if (!CheckCRC()) return;
+
+	EEREAD(version);
+	if (version != PLC_VERSION) return;
+
+	EEREAD(cycle_ms);
+	EEREAD(nbProgram);
+	EEREAD(nbIO);
+	EEREAD(total_nbIO);
+
+	if (nbProgram > 2048) return;
+
+	Program = new BYTE[nbProgram]();
+	IO = new IO_t[nbIO]();
+	Values = new SWORD[total_nbIO]();
+
+	for (int i = 0; i < nbIO; i++) {
+		EEREAD(IO[i]);
+	}
+
+	for (int i = 0; i < nbProgram; i++) {
+		EEREAD(Program[i]);
+	}
+
+	EEPROM_ProgramLen = p;
+	ProgramReady = true;
+}
+
+void LDuino_engine::WRITE_BIT(BYTE addr, boolean value)
+{
+	if (Values[addr] == value) return;
+	if (addr < nbIO) {
+		switch (IO[addr].type) {
+		case IO_TYPE_DIG_OUTPUT:
+			digitalWrite(IO[addr].pin, value);
+			break;
+		case IO_TYPE_MODBUS_COIL:
+			if (mb) mb->Coil(IO[addr].ModbusOffset, value);
+			break;
+		}
+	}
+
+	Values[addr] = value;
 	D(Serial << "write bit[" << addr << "] " << value << "\n");
 }
 
 boolean LDuino_engine::READ_BIT(BYTE  addr)
 {
-	switch (IO[addr].Map.type) {
-	case IO_TYPE_DIG_INPUT:
-		IO[addr].Value = digitalRead(IO[addr].Map.pin);
-		break;
-	case IO_TYPE_MODBUS_COIL:
-		if (mb) IO[addr].Value = mb->Coil(IO[addr].Map.ModbusOffset);
-		break;
+	if (addr < nbIO) {
+		switch (IO[addr].type) {
+		case IO_TYPE_DIG_INPUT:
+			Values[addr] = digitalRead(IO[addr].pin);
+			break;
+		case IO_TYPE_MODBUS_COIL:
+			if (mb) Values[addr] = mb->Coil(IO[addr].ModbusOffset);
+			break;
+		}
 	}
 
-	D(Serial << "read  bit[" << addr << "] " << IO[addr].Value << '\n');
-	return IO[addr].Value;
+	D(Serial << "read  bit[" << addr << "] " << Values[addr] << '\n');
+	return Values[addr];
 }
 
 void LDuino_engine::WRITE_INT(BYTE  addr, SWORD value)
 {
-	if (IO[addr].Value == value) return;
+	if (Values[addr] == value) return;
 
-	switch (IO[addr].Map.type) {
-	case IO_TYPE_MODBUS_HREG:
-		if (mb) mb->Hreg(IO[addr].Map.ModbusOffset, value);
-		break;
+	if (addr < nbIO) {
+		switch (IO[addr].type) {
+		case IO_TYPE_MODBUS_HREG:
+			if (mb) mb->Hreg(IO[addr].ModbusOffset, value);
+			break;
+		}
 	}
 
-	IO[addr].Value = value;
+	Values[addr] = value;
 	D(Serial << "write int[" << addr << "] " << value << '\n');
 }
 
 LDuino_engine::SWORD LDuino_engine::READ_INT(BYTE  addr)
 {
-	switch (IO[addr].Map.type) {
-	case IO_TYPE_MODBUS_HREG:
-		if (mb) IO[addr].Value = mb->Hreg(IO[addr].Map.ModbusOffset);
-		break;
+	if (addr < nbIO) {
+		switch (IO[addr].type) {
+		case IO_TYPE_MODBUS_HREG:
+			if (mb) Values[addr] = mb->Hreg(IO[addr].ModbusOffset);
+			break;
+		}
 	}
 
-	D(Serial << "read  int[" << addr << "] " << IO[addr].Value << '\n');
-	return IO[addr].Value;
+	D(Serial << "read  int[" << addr << "] " << Values[addr] << '\n');
+	return Values[addr];
 }
 
 void LDuino_engine::WRITE_PWM(BYTE addr)
 {
-	analogWrite(IO[addr].Map.pin, IO[addr].Value);
+	analogWrite(IO[addr].pin, Values[addr]);
 }
 
 void LDuino_engine::READ_ADC(BYTE addr)
 {
-	IO[addr].Value = analogRead(IO[addr].Map.pin);
+	Values[addr] = analogRead(IO[addr].pin);
 }

@@ -15,10 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with LDmicro.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef _LDMICRO_h
-#define _LDMICRO_h
+#ifndef _LDUINO_h
+#define _LDUINO_h
 
-#include <Modbus.h>
+#include "Modbus.h"
+#include "Config.h"
 
 #if defined(ARDUINO) && ARDUINO >= 100
 	#include "arduino.h"
@@ -30,6 +31,8 @@
 #define MAX_INT_RELAYS		64
 #define MAX_MODBUS_COILS	64
 
+#define PLC_VERSION 2
+
 #include "Streaming.h"
 
 #if DEBUG
@@ -38,20 +41,25 @@
 #define D(x)
 #endif
 
-class LDuino_engine {
+class LDuino_engine : public Config {
 public:
 	LDuino_engine();
-	void ClearProgram(void);
-	int HexDigit(int c);
 	void SetModbus(Modbus *mb) { this->mb = mb; }
-	void LoadProgramLine(char *line);
+	void ClearProgram(void);
 	void LoadProgramLine(char c);
-	void ConfigureModbus(void);
-	void InterpretOneCycle(void);
 	void Engine(void);
 	unsigned long GetTime() { return time; };
-	int GetProcessingTime() { return processing_time; };
+	void PrintStats(Print & stream);
+	void SaveConfig();
+	bool getProgramReady(void) { return ProgramReady; };
+
 private:
+	void LoadProgramLine(char *line);	
+	void ConfigureModbus(void);
+	void InterpretOneCycle(void);
+	int HexDigit(int c);
+	void LoadConfig();
+	
 	typedef unsigned char BYTE;     // 8-bit unsigned
 	typedef unsigned short WORD;    // 16-bit unsigned
 	typedef signed short SWORD;     // 16-bit signed
@@ -81,11 +89,6 @@ private:
 		BYTE    pin;
 		BYTE	ModbusSlave;
 		WORD	ModbusOffset;
-	} Map_IO_t;
-
-	typedef struct IO_Var_s {
-		Map_IO_t Map;
-		SWORD Value;
 	} IO_t;
 
 	void WRITE_BIT(BYTE addr, boolean value);
@@ -97,13 +100,17 @@ private:
 
 	Modbus *mb;
 
-#define MAX_OPS                 512
-#define MAX_VARIABLES           256
+	BYTE version;
+	SWORD cycle_ms;
+	SWORD nbProgram;
+	BYTE nbIO;
+	BYTE total_nbIO;
 
 	BYTE *Program;
 	IO_t *IO;
-	int nbProgram;
-	int nbIO;
+	SWORD *Values;
+
+	SWORD EEPROM_ProgramLen;
 
 	boolean ProgramReady;
 	
@@ -113,11 +120,10 @@ private:
 		$$cycle 10000 us
 	*/
 
-	enum state {st_init, st_LDcode, st_IO, st_cycle} LoaderState;
+	enum state {st_init, st_LDcode, st_IO, st_cycle, st_error} LoaderState;
 	state ChangeState(char *line);
 
 	int pc;
-	int cycle_ms;
 	unsigned long time;
 	int processing_time;
 
