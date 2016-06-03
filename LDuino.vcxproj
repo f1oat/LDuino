@@ -121,6 +121,7 @@
       <FileType>CppCode</FileType>
     </None>
     <None Include="LDuino.ino" />
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CircularBuffer.h" />
