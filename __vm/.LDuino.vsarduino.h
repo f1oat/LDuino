@@ -11,7 +11,6 @@
 #ifndef _VSARDUINO_H_
 #define _VSARDUINO_H_
 #define __AVR_ATmega2560__
-#define _VMDEBUG 1
 #define DEBUG 0
 #define F_CPU 16000000L
 #define ARDUINO 10608
@@ -64,14 +63,21 @@ extern "C" void __cxa_pure_virtual() {;}
 #define portOutputRegister(P)
 #define portInputRegister(P)
 #define portModeRegister(P)
-#include <..\LDuino\LDuino.ino>
-#include <..\LDuino\CircularBuffer.h>
-#include <..\LDuino\IO.ino>
-#include <..\LDuino\TinyWebServer.cpp>
-#include <..\LDuino\TinyWebServer.h>
-#include <..\LDuino\ldmicro.cpp>
-#include <..\LDuino\ldmicro.h>
-#include <..\LDuino\plcExt.ino>
-#include <..\LDuino\plcweb.cpp>
-#include <..\LDuino\plcweb.h>
+#include <LDuino.ino>
+#include <CircularBuffer.h>
+#include <Config.cpp>
+#include <Config.h>
+#include <IO.ino>
+#include <Modbus.cpp>
+#include <Modbus.h>
+#include <ModbusIP.cpp>
+#include <ModbusIP.h>
+#include <ModbusSerial.cpp>
+#include <ModbusSerial.h>
+#include <TinyWebServer.cpp>
+#include <TinyWebServer.h>
+#include <lduino_engine.cpp>
+#include <lduino_engine.h>
+#include <plcweb.cpp>
+#include <plcweb.h>
 #endif
