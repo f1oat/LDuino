@@ -44,7 +44,7 @@
 class LDuino_engine : public Config {
 public:
 	LDuino_engine();
-	void SetModbus(Modbus *mb) { this->mb = mb; }
+	void SetModbus(Modbus *mb);
 	void ClearProgram(void);
 	void LoadProgramLine(char c);
 	void Engine(void);

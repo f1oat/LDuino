@@ -10,7 +10,7 @@ ModbusIP::ModbusIP():_server(MODBUSIP_PORT) {
 	this->_slaveId= 1;
 	this->_SerialInProgress = false;
 	this->client = NULL;
-	this->ModbusTimeout_ms = 100;
+	this->ModbusTimeout_ms = 200;
 }
 
 void ModbusIP::config() {
@@ -50,7 +50,8 @@ void ModbusIP::configRelay(HardwareSerial* port, long baud, u_int format, void (
 	if (baud > 19200) {
 		_t15 = 750;
 		_t35 = 1750;
-		} else {
+	} 
+	else {
 		_t15 = 15000000/baud; // 1T * 1.5 = T1.5
 		_t35 = 35000000/baud; // 1T * 3.5 = T3.5
 	}
@@ -134,7 +135,7 @@ void ModbusIP::pollSerial()
 	}
 
     if (_port->available() > _len)	{	// We have received new data
-		_timeoutFrame = micros() + 50000L; //+ _t15;
+		_timeoutFrame = micros() + _t15;
 	    _len = _port->available();
     }
 	else if (_len > 0 && micros() > _timeoutFrame) {
@@ -153,6 +154,7 @@ void ModbusIP::pollSerial()
 			if (client) Serial2TCP_Relay();
 			free(_frame);
 		}
+		while (_port->available()) _port->read();
 		_len = 0;	
 		_SerialInProgress = false;
 		// Switch off receiver

@@ -53,6 +53,12 @@ LDuino_engine::LDuino_engine()
 	LoadConfig();
 }
 
+void LDuino_engine::SetModbus(Modbus * mb)
+{
+	this->mb = mb;
+	ConfigureModbus();
+}
+
 void LDuino_engine::ClearProgram(void)
 {
 	ProgramReady = false;
