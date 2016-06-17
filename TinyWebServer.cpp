@@ -34,7 +34,12 @@ extern "C" {
 #include <errno.h>
 }
 
+#ifdef CONTROLLINO_MAXI
 #include <Ethernet.h>
+#else
+#include <EthernetV2_0.h>
+#endif
+
 #include <Flash.h>
 #include <SD.h>
 

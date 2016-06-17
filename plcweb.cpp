@@ -15,7 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with LDmicro.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "Arduino.h"
+
+#ifdef CONTROLLINO_MAXI
 #include <Ethernet.h>
+#else
+#include <EthernetV2_0.h>
+#endif
+
 #include <Flash.h>
 
 #include "TinyWebServer.h"
@@ -48,7 +55,8 @@ FLASH_STRING(index_html,
 	"<tr><td>Subnet</td><td><input type = 'text' name = 'subnet' size = '18' value = '%subnet'></td></tr>"
 	"<tr><td>Gateway</td><td><input type = 'text' name = 'gateway' size = '18' value = '%gateway'></td></tr>"
 	"<tr><td>DNS</td><td><input type = 'text' name = 'dns' size = '18' value = '%dns'></td></tr>"
-	"<tr><td><input type = 'submit' value = 'Save IP config'></td></tr>"
+	"<tr><td>MODBUS Baudrate</td><td><input type = 'text' name = 'modbus_baudrate' size = '18' value = '%modbus_baudrate'></td></tr>"
+	"<tr><td><input type = 'submit' value = 'Save config'></td></tr>"
 	"</table>"
 	"</form></td>"
 	
@@ -123,9 +131,10 @@ static void main_page(Client& client, String status = "")
 	str.replace(F("%subnet"), IP2Ascii(IP_Config.subnet));
 	str.replace(F("%dns"), IP2Ascii(IP_Config.dns_server));
 	str.replace(F("%gateway"), IP2Ascii(IP_Config.gateway));
+	str.replace(F("%modbus_baudrate"), String(IP_Config.modbus_baudrate));
 	client << str;
 	lduino.PrintStats(client);
-	client << F("<pre></body></html>");
+	client << F("</pre></body></html>");
 }
 
 static boolean index_handler(TinyWebServer& web_server)
@@ -259,19 +268,17 @@ static void ParseConfig(StringParse &buf)
 	Ascii2IP(buf.Get(F("subnet")), IP_Config.subnet);
 	Ascii2IP(buf.Get(F("gateway")), IP_Config.gateway);
 	Ascii2IP(buf.Get(F("dns")), IP_Config.dns_server);
+	IP_Config.modbus_baudrate = buf.Get(F("modbus_baudrate")).toInt();
 }
 
 static boolean config_handler(TinyWebServer& web_server) 
 {
-	web_server.send_error_code(200);
-	web_server.end_headers();
-
 	const char* length_str = web_server.get_header_value("Content-Length");
 	int length = atoi(length_str);
 	uint32_t start_time = millis();
 	StringParse buf;
 
-	EthernetClient client = web_server.get_client();
+	Client& client = web_server.get_client();
 
 	while (buf.length() < length && client.connected() && (millis() - start_time < 30000)) {
 		if (!client.available()) continue;
@@ -280,6 +287,10 @@ static boolean config_handler(TinyWebServer& web_server)
 
 	ParseConfig(buf);
 	IP_Config.SaveConfig();
+
+	web_server.send_error_code(200); 
+	web_server.send_content_type("text/html");
+	web_server.end_headers();
 
 	main_page(client, F("<font color='green'>IP Config saved</font>"));
 
@@ -304,7 +315,7 @@ static boolean reboot_confirm_handler(TinyWebServer& web_server)
 
 	Client& client = web_server.get_client();
 	String str((__FlashStringHelper *)reboot_confirm_html_flash);
-	str.replace("%ip", IP2Ascii(Ethernet.localIP()));
+	str.replace(F("%ip"), IP2Ascii(Ethernet.localIP()));
 	client << str;
 
 	doReset = true;

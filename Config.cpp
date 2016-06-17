@@ -63,8 +63,8 @@ void IP_Config_t::SaveConfig()
 	EEWRITE((uint32_t)dns_server);
 	EEWRITE((uint32_t)gateway);
 	EEWRITE((uint32_t)subnet);
+	EEWRITE(modbus_baudrate);
 	UpdateCRC();
-	Serial << "IP Config length " << p << '\n';
 }
 
 void IP_Config_t::LoadConfig()
@@ -86,4 +86,5 @@ void IP_Config_t::LoadConfig()
 	gateway = buf;
 	EEREAD(buf);
 	subnet = buf;
+	EEREAD(modbus_baudrate);
 }

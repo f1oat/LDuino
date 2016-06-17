@@ -135,10 +135,11 @@ void ModbusIP::pollSerial()
 	}
 
     if (_port->available() > _len)	{	// We have received new data
-		_timeoutFrame = micros() + _t15;
 	    _len = _port->available();
+		_timeoutFrame = micros() + _t35;
     }
 	else if (_len > 0 && micros() > _timeoutFrame) {
+		//Serial.println(_len);
 		if (_len >= 3) {
 			byte i;
 			_MBAP[6] = _port->read();

@@ -25,8 +25,14 @@
 #define noPinDefs         // Disable default pin definitions (X0, X1, ..., Y0, Y1, ...)
 
 #include <SPI.h>
+
+#ifdef CONTROLLINO_MAXI
 #include <Ethernet.h>
 #include <Controllino.h>
+#else
+#include <EthernetV2_0.h>
+#define SDCARD_CS 4
+#endif
 #include <EEPROM.h>
 
 #include "Modbus.h"
@@ -68,7 +74,7 @@ void setup_MODBUS()
 	mb.config(); 	//Config Modbus IP
 #ifdef CONTROLLINO_MAXI
 	Controllino_RS485Init();
-	mb.configRelay(&Serial3, 9600, SERIAL_8N1, switch_txrx);
+	mb.configRelay(&Serial3, IP_Config.modbus_baudrate, SERIAL_8N1, switch_txrx);
 #endif
 	lduino.SetModbus(&mb);
 }
@@ -83,6 +89,11 @@ void setup() {
 	Serial.begin(115200);
 
 	IP_Config.LoadConfig();
+
+#ifndef CONTROLLINO_MAXI
+	pinMode(SDCARD_CS, OUTPUT);
+	digitalWrite(SDCARD_CS, HIGH);//Deselect the SD card
+#endif
 
 	if (IP_Config.useDHCP) {
 		Serial << F("Trying DHCP ...\n");

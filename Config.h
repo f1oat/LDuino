@@ -42,6 +42,7 @@ public:
 	IPAddress dns_server = { 192, 168, 1, 1 };
 	IPAddress gateway = { 192, 168, 1, 1 };
 	IPAddress subnet = { 255, 255, 255, 0 };
+	uint32_t  modbus_baudrate = 9600;
 	void SaveConfig();
 	void LoadConfig();
 private:
