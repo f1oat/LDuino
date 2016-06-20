@@ -137,6 +137,7 @@
       <FileType>CppCode</FileType>
     </None>
     <None Include="LDuino.ino" />
+    <None Include="mkfs.bat" />
     <None Include="README.md" />
     <None Include="tools\makefsdata.pl" />
     <None Include="web\config.htm">
@@ -158,6 +159,7 @@
     <ClInclude Include="ModbusSerial.h" />
     <ClInclude Include="plcweb.h" />
     <ClInclude Include="TinyWebServer.h" />
+    <ClInclude Include="xmlstring.h" />
     <ClInclude Include="__vm\.LDuino.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
@@ -168,6 +170,7 @@
     <ClCompile Include="ModbusSerial.cpp" />
     <ClCompile Include="plcweb.cpp" />
     <ClCompile Include="TinyWebServer.cpp" />
+    <ClCompile Include="xmlstring.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="wp\controllino_maxi.jpg" />
