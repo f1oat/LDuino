@@ -26,6 +26,22 @@
 
 #define PROGRAM_OFFSET 32	// The PLC program will be stored in EEPROM starting from this address
 
+class StringParse : public String
+{
+public:
+	String Get(String key) {
+		int b = this->indexOf(key);
+		if (b < 0) return "";
+		b = this->indexOf('=', b);
+		if (b < 0) return "";
+		b++;
+		int e = this->indexOf('\r', b);
+		if (e < 0) return "";
+		return this->substring(b, e);
+	}
+};
+
+
 class Config {
 public:
 	bool CheckCRC(void);
@@ -45,6 +61,12 @@ public:
 	uint32_t  modbus_baudrate = 9600;
 	void SaveConfig();
 	void LoadConfig();
+	void ParseConfig(StringParse & buf);
+	static String IP2Ascii(IPAddress ip);
+	static void Ascii2IP(String str, IPAddress & ip);
+	static String MAC2Ascii(uint8_t * mac);
+	static void Ascii2MAC(String str, uint8_t * mac);
+	String toXML(void);
 private:
 	uint16_t version;
 	const uint16_t _version = 0x12F8;

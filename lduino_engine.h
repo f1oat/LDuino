@@ -50,8 +50,10 @@ public:
 	void Engine(void);
 	unsigned long GetTime() { return time; };
 	void PrintStats(Print & stream);
+	void XML_State(Print & stream);
 	void SaveConfig();
 	bool getProgramReady(void) { return ProgramReady; };
+	void ToggleProgramRunning(void) { if (ProgramReady) ProgramRunning = !ProgramRunning; }
 
 private:
 	void LoadProgramLine(char *line);	
@@ -59,7 +61,8 @@ private:
 	void InterpretOneCycle(void);
 	int HexDigit(int c);
 	void LoadConfig();
-	
+	void PrintPin(Print & stream, char prefix, int index, int value);
+
 	typedef unsigned char BYTE;     // 8-bit unsigned
 	typedef unsigned short WORD;    // 16-bit unsigned
 	typedef signed short SWORD;     // 16-bit signed
@@ -112,6 +115,7 @@ private:
 
 	SWORD EEPROM_ProgramLen;
 
+	boolean ProgramRunning;
 	boolean ProgramReady;
 	
 	/*

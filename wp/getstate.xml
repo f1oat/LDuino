@@ -1,0 +1,6 @@
+<?xml version = "1.0" ?>
+<state>
+<running>1</running><program_len>438</program_len><eeprom_len>4096</eeprom_len><opcodes>309</opcodes><io_nb>18</io_nb><internal_vars>12</internal_vars><cycle>10</cycle><processing>784</processing><outputs>0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0</outputs>
+<relays>0:1,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0</relays>
+<inputs>0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0</inputs>
+</state>

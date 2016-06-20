@@ -31,60 +31,25 @@
 #include "lduino_engine.h"
 #include "Config.h"
 
+#include "httpd-fsdata.h"
+
 extern LDuino_engine lduino;
 extern IP_Config_t IP_Config;
 extern bool doReset;
 
-static boolean index_handler(TinyWebServer& web_server);
-static boolean config_handler(TinyWebServer& web_server);
+static boolean file_handler(TinyWebServer& web_server);
+static boolean getstate_handler(TinyWebServer& web_server);
+static boolean setconfig_handler(TinyWebServer& web_server);
+static boolean getconfig_handler(TinyWebServer& web_server);
 static boolean reboot_handler(TinyWebServer& web_server);
-static boolean reboot_confirm_handler(TinyWebServer& web_server);
-
-FLASH_STRING(index_html,
-	"<html><body><pre>"
-	"<b>LDuino PLC - (C) 2016 Frederic Rible (frible@teaser.fr)</b>\n"
-	"%status"
-	"<hr>"
-	"<table><tr>"
-	
-	"<td valign='top'><form action = '/config' enctype = 'text/plain' method = 'post'>"
-	"<table>"
-	"<tr><td>Use DHCP</td><td><input type = 'checkbox' name = 'useDHCP' value = 'true' %useDHCP></td></tr>"
-	"<tr><td>MAC</td><td><input type = 'text' name = 'mac' size = '18' value = '%mac'></td></tr>"
-	"<tr><td>IP</td><td><input type = 'text' name = 'ip' size = '18' value = '%ip'></td></tr>"
-	"<tr><td>Subnet</td><td><input type = 'text' name = 'subnet' size = '18' value = '%subnet'></td></tr>"
-	"<tr><td>Gateway</td><td><input type = 'text' name = 'gateway' size = '18' value = '%gateway'></td></tr>"
-	"<tr><td>DNS</td><td><input type = 'text' name = 'dns' size = '18' value = '%dns'></td></tr>"
-	"<tr><td>MODBUS Baudrate</td><td><input type = 'text' name = 'modbus_baudrate' size = '18' value = '%modbus_baudrate'></td></tr>"
-	"<tr><td><input type = 'submit' value = 'Save config'></td></tr>"
-	"</table>"
-	"</form></td>"
-	
-	"<td valign='top'><form action = '/upload' enctype = 'multipart/form-data' method = 'post'>"
-	"<table>"
-	"<tr><td><input type = 'file' name = 'datafile' size = '40'></td></tr>"
-	"<tr><td><input type = 'submit' value = 'Upload LDmicro XINT file'></td></tr>"
-	"</table>"
-	"</form></td>"
-
-	"</tr></table>"
-	"<a href='/'>Refresh</a>             <a href = '/reboot'>Reboot</a>"
-	"<hr>"
-	);
-
-FLASH_STRING(reboot_confirm_html,
-	"<html>"
-	"<head><meta http-equiv='refresh' content='15; url = http://%ip/'></head>"
-	"<body>Rebooting ...</body>"
-	"</html>"
-);
 
 static TinyWebServer::PathHandler handlers[] = {
 	{ "/upload", TinyWebServer::POST, &TinyWebPutHandler::put_handler },
-	{ "/config", TinyWebServer::POST, &config_handler },
+	{ "/setconfig", TinyWebServer::POST, &setconfig_handler },
+	{ "/getconfig.xml", TinyWebServer::GET, &getconfig_handler },
 	{ "/reboot", TinyWebServer::GET, &reboot_handler },
-	{ "/reboot_confirm", TinyWebServer::GET, &reboot_confirm_handler },
-	{ "/" "*", TinyWebServer::GET, &index_handler },
+	{ "/getstate.xml" "*", TinyWebServer::GET, &getstate_handler },
+	{ "/" "*", TinyWebServer::GET, &file_handler },
 	{ NULL },
 };
 
@@ -96,30 +61,7 @@ static const char* headers[] = {
 
 static TinyWebServer web = TinyWebServer(handlers, headers);
 
-static String IP2Ascii(IPAddress ip)
-{
-	char buf[16];
-	sprintf(buf, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-	return String(buf);
-}
-
-static void Ascii2IP(String str, IPAddress &ip)
-{
-	sscanf(str.c_str(), "%d.%d.%d.%d", &ip[0], &ip[1], &ip[2], &ip[3]);
-}
-
-static String MAC2Ascii(uint8_t *mac)
-{
-	char buf[18];
-	sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	return String(buf);
-}
-
-static void Ascii2MAC(String str, uint8_t *mac)
-{
-	sscanf(str.c_str(), "%02X:%02X:%02X:%02X:%02X:%02X", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-}
-
+#if 0
 static void main_page(Client& client, String status = "")
 {
 	//index_html.print(client);
@@ -136,15 +78,55 @@ static void main_page(Client& client, String status = "")
 	lduino.PrintStats(client);
 	client << F("</pre></body></html>");
 }
+#endif
 
-static boolean index_handler(TinyWebServer& web_server)
+static bool find_file(const char *path, char **data, int *len)
 {
-	D(Serial.println("GET index.html"));
-	web_server.send_error_code(200);
-	web_server.send_content_type("text/html");
-	web_server.end_headers();
-	Client& client = web_server.get_client();
-	main_page(client);
+	const struct httpd_fsdata_file *p = HTTPD_FS_ROOT;
+	while (p) {
+		char *n = (char*)pgm_read_word(&(p->name));
+		if (strcmp_P(path, n) == 0) {
+			*data = (char*)pgm_read_word(&(p->data));
+			*len = pgm_read_word(&(p->len));
+			return true;
+		}
+		p = (const struct httpd_fsdata_file *)pgm_read_word(&(p->next));
+	}
+	return false;
+}
+
+static boolean file_handler(TinyWebServer& web_server)
+{
+	const char *path = web_server.get_path();
+	Serial << "GET " << path << '\n';
+
+	if (strcmp(path, "/") == 0) path = "/index.html";
+
+	char *data;
+	int len;
+
+	if (find_file(path, &data, &len)) {
+		web_server.send_error_code(200);
+		web_server.send_content_type(web_server.get_mime_type_from_filename(path));
+		web_server.end_headers(); 
+
+		while (len > 0) {
+			uint8_t buf[256];
+			short i;
+			for (i = 0; i < len && i < sizeof(buf); i++) {
+				buf[i] = pgm_read_byte(data++);
+			}
+			len -= i;
+			web_server.write(buf, i);
+		}
+	}
+	else {
+		web_server.send_error_code(404);
+		web_server.send_content_type("text/plain");
+		web_server.end_headers();
+		web_server.print("not found");
+	}
+
 	return true;
 }
 
@@ -238,40 +220,12 @@ static void file_uploader_handler(TinyWebServer& web_server, TinyWebPutHandler::
 		else {
 			status += F("<font color='red'>Upload aborted</font>");
 		}
-		main_page(client, status);
+		//main_page(client, status);
 		break;
 	}
 }
 
-class StringParse : public String
-{
-public:
-	String Get(String key) {
-		int b = this->indexOf(key);
-		if (b < 0) return "";
-		b = this->indexOf('=', b);
-		if (b < 0) return "";
-		b++;
-		int e = this->indexOf('\r', b);
-		if (e < 0) return "";
-		return this->substring(b, e);
-	}
-};
-
-static void ParseConfig(StringParse &buf)
-{
-	Serial << buf << '\n';
-
-	IP_Config.useDHCP = buf.Get(F("useDHCP")) == "true" ? true : false;
-	Ascii2MAC(buf.Get(F("mac")), IP_Config.mac_address);
-	Ascii2IP(buf.Get(F("ip")), IP_Config.local_ip);
-	Ascii2IP(buf.Get(F("subnet")), IP_Config.subnet);
-	Ascii2IP(buf.Get(F("gateway")), IP_Config.gateway);
-	Ascii2IP(buf.Get(F("dns")), IP_Config.dns_server);
-	IP_Config.modbus_baudrate = buf.Get(F("modbus_baudrate")).toInt();
-}
-
-static boolean config_handler(TinyWebServer& web_server) 
+static boolean setconfig_handler(TinyWebServer& web_server) 
 {
 	const char* length_str = web_server.get_header_value("Content-Length");
 	int length = atoi(length_str);
@@ -280,19 +234,15 @@ static boolean config_handler(TinyWebServer& web_server)
 
 	Client& client = web_server.get_client();
 
+	if (length <= 0) return true;
+
 	while (buf.length() < length && client.connected() && (millis() - start_time < 30000)) {
 		if (!client.available()) continue;
 		buf += client.readString();
 	}
 
-	ParseConfig(buf);
+	IP_Config.ParseConfig(buf);
 	IP_Config.SaveConfig();
-
-	web_server.send_error_code(200); 
-	web_server.send_content_type("text/html");
-	web_server.end_headers();
-
-	main_page(client, F("<font color='green'>IP Config saved</font>"));
 
 	return true;
 }
@@ -300,25 +250,19 @@ static boolean config_handler(TinyWebServer& web_server)
 static boolean reboot_handler(TinyWebServer& web_server)
 {
 	web_server.send_error_code(200);
-	web_server.send_content_type("text/html");
+	web_server.send_content_type("text/plain");
 	web_server.end_headers();
-	Client& client = web_server.get_client();
-	client << F("<html><body><pre><a href='/reboot_confirm'>Please confirm reboot</a>\n<a href='/'>Cancel</a></pre></body></html>");
+	web_server.write("rebooting");
+	doReset = true;
 	return true;
 }
 
-static boolean reboot_confirm_handler(TinyWebServer& web_server)
+static boolean getconfig_handler(TinyWebServer& web_server)
 {
 	web_server.send_error_code(200);
-	web_server.send_content_type("text/html");
+	web_server.send_content_type("text/xml");
 	web_server.end_headers();
-
-	Client& client = web_server.get_client();
-	String str((__FlashStringHelper *)reboot_confirm_html_flash);
-	str.replace(F("%ip"), IP2Ascii(Ethernet.localIP()));
-	client << str;
-
-	doReset = true;
+	web_server << IP_Config.toXML();
 	return true;
 }
 
@@ -331,4 +275,52 @@ void setup_PLC_Web()
 void poll_PLC_Web()
 {
 	web.process();
+}
+
+static void manage_toggle(const char *path)
+{	
+	char *toggle = strstr(path, "&toggle=");
+	if (!toggle) return;
+	toggle += 8;
+	
+	switch (*toggle) {
+	case 'D':
+	{
+		int r = atoi(toggle + 1);
+		if (r < 0 || r > 11) return;
+		r += 2;
+		Serial << "toggle " << r << "\n";
+		digitalWrite(r, !digitalRead(r));
+		break;
+	}
+	case 'R':
+	{
+		int r = atoi(toggle + 1);
+		if (r < 0 || r > 9) return;
+		r += 22;
+		Serial << "toggle " << r << "\n";
+		digitalWrite(r, !digitalRead(r));
+		break;
+	}
+	case 'r':
+		lduino.ToggleProgramRunning();
+		break;
+	default:
+		break;
+	}
+
+	return;
+}
+
+static boolean getstate_handler(TinyWebServer& web_server)
+{
+	web_server.send_error_code(200);
+	web_server.send_content_type("text/xml");
+	web_server.send_content_type("Connection: keep-alive");
+	web_server.end_headers();
+
+	manage_toggle(web_server.get_path());
+	Client& stream = web_server.get_client();
+	lduino.XML_State(stream);
+	return true;
 }

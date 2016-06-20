@@ -17,6 +17,7 @@
 
 #include "Config.h"
 #include "lduino_engine.h"
+#include "xmlstring.h"
 
 #define INT_SET_BIT                              1
 #define INT_CLEAR_BIT                            2
@@ -61,6 +62,7 @@ void LDuino_engine::SetModbus(Modbus * mb)
 
 void LDuino_engine::ClearProgram(void)
 {
+	ProgramRunning = false;
 	ProgramReady = false;
 	LoaderState = st_init;
 	pc = 0;
@@ -168,6 +170,7 @@ void LDuino_engine::LoadProgramLine(char *line)
 			cycle_ms = atoi(line + 7) / 1000;
 			ConfigureModbus();
 			ProgramReady = true;
+			ProgramRunning = true;
 			D(Serial.println("Program Ready"));
 			D(Serial.print("cycle time (ms): "));
 			D(Serial.println(cycle_ms));
@@ -214,7 +217,7 @@ void LDuino_engine::ConfigureModbus(void)
 
 void LDuino_engine::InterpretOneCycle(void)
 {
-	if (!ProgramReady) return;
+	if (!ProgramReady || !ProgramRunning) return;
 
 	for (int pc = 0;;) {
 		D(Serial << "opcode[" << String(pc, HEX) << "]=" << String(Program[pc], HEX) << "\n");
@@ -321,7 +324,7 @@ void LDuino_engine::InterpretOneCycle(void)
 			Serial.print("PC: 0x");
 			Serial.print(pc, HEX);
 			Serial.println("");
-			ProgramReady = false;
+			ProgramRunning = false;
 			return;
 		}
 	}
@@ -336,7 +339,7 @@ void LDuino_engine::Engine(void)
 		return;
 	}
 
-	while (ProgramReady && time + cycle_ms < millis() && count-- > 0) {
+	while (time + cycle_ms < millis() && count-- > 0) {
 		unsigned long ts = micros();
 		InterpretOneCycle();
 		processing_time = micros() - ts;
@@ -350,14 +353,14 @@ void LDuino_engine::Engine(void)
 
 void LDuino_engine::PrintStats(Print & stream)
 {
-	stream << F("Program running: ") << (ProgramReady ? F("yes") : F("no")) << '\n'; 
+	stream << F("Program running: ") << (ProgramRunning ? F("yes") : F("no")) << '\n'; 
 	stream << F("EEPROM:          ") << EEPROM_ProgramLen << '/' << EEPROM.length() << F(" bytes used\n");
 	stream << F("Opcodes:         ") << nbProgram << '\n';
 	stream << F("IO vars:         ") << nbIO << '\n';
 	stream << F("Internal vars:   ") << total_nbIO - nbIO << '\n';
 	stream << F("Cycle:           ") << cycle_ms << F(" ms\n");
 	stream << F("Processing time: ") << processing_time << F(" us\n");
-	
+
 	stream << F("\nVariables dump\n");
 	
 	for (int i = 0; i < total_nbIO; i++) {
@@ -365,6 +368,56 @@ void LDuino_engine::PrintStats(Print & stream)
 		sprintf(buf, "%3d: %6d", i, Values[i]);
 		stream << buf << "\n";
 	}
+}
+
+void LDuino_engine::XML_State(Print & stream)
+{
+	xmlstring str;
+
+	str += F("<?xml version = \"1.0\" ?>\n");
+	str += F("<state>\n");
+	str.catTag(F("running"), ProgramRunning);
+	str.catTag(F("program_len"), EEPROM_ProgramLen);
+	str.catTag(F("eeprom_len"), EEPROM.length());
+	str.catTag(F("opcodes"), nbProgram);
+	str.catTag(F("io_nb"), nbIO);
+	str.catTag(F("internal_vars"), total_nbIO - nbIO);
+	str.catTag(F("cycle"), cycle_ms);
+	str.catTag(F("processing"), processing_time);
+
+#if 0
+	buf += F("<vars>\n");
+
+	for (int i = 0; i < total_nbIO; i++) {
+		buf += F("<V") + i + '>' + Values[i] + F("</V") + i + F(">\n");
+	}
+
+	buf += F("</vars>\n");
+#endif
+
+	str += F("<outputs>");
+	for (short r = 0; r < 12; r++) {
+		if (r) str += ',';
+		str += String(r) + ':' + String(digitalRead(r + 2));
+	}
+	str += F("</outputs>\n");
+
+	str += F("<relays>");
+	for (short r = 0; r < 10; r++) {
+		if (r) str += ',';
+		str += String(r) + ':' + String(digitalRead(r + 22));
+	}
+	str += F("</relays>\n");
+
+	str += F("<inputs>");
+	for (short r = 0; r < 10; r++) {
+		if (r) str += ',';
+		str += String(r) + ':' + String(digitalRead(r + 54));
+	}
+	str += F("</inputs>\n");
+	
+	str += F("</state>\n");
+	stream << str;
 }
 
 void LDuino_engine::SaveConfig()
@@ -419,6 +472,7 @@ void LDuino_engine::LoadConfig()
 	}
 
 	EEPROM_ProgramLen = p;
+	ProgramRunning = true;
 	ProgramReady = true;
 }
 
