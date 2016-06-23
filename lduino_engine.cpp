@@ -17,7 +17,6 @@
 
 #include "Config.h"
 #include "lduino_engine.h"
-#include "xmlstring.h"
 
 #define INT_SET_BIT                              1
 #define INT_CLEAR_BIT                            2
@@ -370,6 +369,58 @@ void LDuino_engine::PrintStats(Print & stream)
 	}
 }
 
+int LDuino_engine::GetType(int pin, signed short *value)
+{
+	for (int addr = 0; addr < nbIO; addr++) {
+		if (IO[addr].pin == pin) {
+			*value = Values[addr];
+			return IO[addr].type;
+		}
+	}
+
+	*value = digitalRead(pin);
+	return IO_TYPE_PENDING;
+}
+
+// Read digital pins, avoid pins that are configure for PWM or analog input
+
+void LDuino_engine::XML_DumpDigitalPins(xmlstring &str, int first, int last, int offset)
+{
+	bool comma = false;
+	signed short value;
+
+	for (short r = first; r <= last; r++) {
+		short pin = r + offset;
+		switch (GetType(pin, &value)) {
+		case IO_TYPE_DIG_INPUT:
+		case IO_TYPE_DIG_OUTPUT:
+		case IO_TYPE_PENDING:
+			if (comma) str += ',';
+			str += String(r) + ':' + String(value);
+			comma = true;
+			break;
+		}
+	}
+}
+
+void LDuino_engine::XML_DumpAnalogPins(xmlstring &str, int first, int last, int offset)
+{
+	bool comma = false;
+	signed short value;
+
+	for (short r = first; r <= last; r++) {
+		short pin = r + offset;
+		switch (GetType(pin, &value)) {
+		case IO_TYPE_READ_ADC:
+		case IO_TYPE_PWM_OUTPUT:
+			if (comma) str += ',';
+			str += String(r) + ':' + String(value);
+			comma = true;
+			break;
+		}
+	}
+}
+
 void LDuino_engine::XML_State(Print & stream)
 {
 	xmlstring str;
@@ -396,26 +447,25 @@ void LDuino_engine::XML_State(Print & stream)
 #endif
 
 	str += F("<outputs>");
-	for (short r = 0; r < 12; r++) {
-		if (r) str += ',';
-		str += String(r) + ':' + String(digitalRead(r + 2));
-	}
+	XML_DumpDigitalPins(str, 0, 11, 2);
 	str += F("</outputs>\n");
 
 	str += F("<relays>");
-	for (short r = 0; r < 10; r++) {
-		if (r) str += ',';
-		str += String(r) + ':' + String(digitalRead(r + 22));
-	}
+	XML_DumpDigitalPins(str, 0, 9, 22);
 	str += F("</relays>\n");
 
 	str += F("<inputs>");
-	for (short r = 0; r < 10; r++) {
-		if (r) str += ',';
-		str += String(r) + ':' + String(digitalRead(r + 54));
-	}
+	XML_DumpDigitalPins(str, 0, 9, 54);
 	str += F("</inputs>\n");
+
+	str += F("<analog>");
+	XML_DumpAnalogPins(str, 0, 9, 54);
+	str += F("</analog>\n");
 	
+	str += F("<pwm>");
+	XML_DumpAnalogPins(str, 0, 9, 2);
+	str += F("</pwm>\n");
+
 	str += F("</state>\n");
 	stream << str;
 }

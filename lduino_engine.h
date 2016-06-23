@@ -20,6 +20,7 @@
 
 #include "Modbus.h"
 #include "Config.h"
+#include "xmlstring.h"
 
 #if defined(ARDUINO) && ARDUINO >= 100
 	#include "arduino.h"
@@ -50,6 +51,9 @@ public:
 	void Engine(void);
 	unsigned long GetTime() { return time; };
 	void PrintStats(Print & stream);
+	int GetType(int pin, signed short * value);
+	void XML_DumpDigitalPins(xmlstring & str, int first, int last, int offset);
+	void XML_DumpAnalogPins(xmlstring & str, int first, int last, int offset);
 	void XML_State(Print & stream);
 	void SaveConfig();
 	bool getProgramReady(void) { return ProgramReady; };
