@@ -112,6 +112,8 @@ void setup() {
 		Ethernet.begin(IP_Config.mac_address, IP_Config.local_ip, IP_Config.dns_server, IP_Config.gateway, IP_Config.subnet);
 	}
 
+	Serial << F("IP: ") << Ethernet.localIP() << '\n';
+
 	customIO();			// Setup inputs and outputs for Controllino PLC
 	setup_MODBUS();
 	setup_PLC_Web();	// Web server init
@@ -120,7 +122,6 @@ void setup() {
 	Timer1.attachInterrupt(pollPLC);
 
 	Serial << F("PLC ready\n");
-	Serial << F("IP: ") << Ethernet.localIP() << '\n';
 } 
 
 void loop() {

@@ -1,2 +1,2 @@
-perl tools/makefsdata.pl -A PROGMEM -d web -o httpd-fsdata.h
+python tools/makefsdata.py
 pause

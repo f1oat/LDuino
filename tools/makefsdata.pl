@@ -32,6 +32,8 @@
 # char name[COFFEE_NAME_LENGTH];
 # } __attribute__((packed));
 
+use List::Util qw[min max];
+
 goto DEFAULTS;
 START:$version="1.1";
 
@@ -166,8 +168,9 @@ if ($coffee) {
 } else {
   print "Processing directory $directory as root of packed httpd-fs file system\n";
 }
+
 opendir(DIR, ".");
-@files =  grep { !/^\./ && !/(CVS|~)/ && !/(makefsdata.ignore)/ } readdir(DIR);
+@files =  grep { !/^\./ && !/(CVS|~)/ && !/(ignore.txt)/ } readdir(DIR);
 closedir(DIR);
 
 foreach $file (@files) {
@@ -181,6 +184,7 @@ foreach $file (@files) {
     next;
   }
 }
+
 #--------------------Write the output file-------------------
 print "Writing to $outputfile\n";
 ($DAY, $MONTH, $YEAR) = (localtime)[3,4,5];
@@ -230,16 +234,7 @@ foreach $file (@files) {if(-f $file) {
   $flen[$n]=$file_length;
   $clen[$n]=$coffee_length;
   $n++;$coffeesectors+=$coffee_sectors;$coffeesize+=$coffee_length;
-  if ($coffee) {
-    if ($coffeesectors>$coffeemax) {
-      print "Warning: sector number $coffeesectors overflows allocated sector size in coffee header\n";
-    }
-    print(OUTPUT "\n__attribute__ ((section (\"$sectionname\")))\n");
-    print(OUTPUT "volatile const char data".$fvar."[$coffee_length] = {\n");
-  } else {
-    print(OUTPUT "\nconst char data".$fvar."[$coffee_length] $attribute = {\n");
-  }
-  print(OUTPUT "$tab/* $file */\n$tab");
+
 #--------------------Header-----------------------------
 #log_page
   if ($coffee) {
@@ -270,30 +265,41 @@ foreach $file (@files) {if(-f $file) {
   }
 
 #-------------------File name--------------------------
-  for($j = 0; $j < length($file); $j++) {
-    $temp=unpack("C", substr($file, $j, 1));
-    if ($complement) {$temp=$temp^0xff;}
-    printf(OUTPUT " %#02.2x,", $temp);
-  }
-  if ($coffee) {
-    for(; $j < $coffee_name_length-1; $j++) {printf(OUTPUT " $null,");}
-    {print(OUTPUT " $null");}
-  } else {
-    {printf(OUTPUT " $null");}
-  }
+  printf(OUTPUT "const char name%s[%d] $attribute = \"$file\";\n", $fvar, length($file)+1);
+
 #------------------File Data---------------------------
   $coffee_length-=$coffee_header_length;
-  $i = 10;        
+  $i = 0;
+  $cnt = 0;
+  $section = 0;      
+  $maxsize = 30000;
+
   while(read(FILE, $data, 1)) { 
     $temp=unpack("C", $data);   
     if ($complement) {$temp=$temp^0xff;}
-    if($i == 10) {
-      printf(OUTPUT ",\n$tab 0x%2.2x", $temp);
-      $i = 0;
-    } else {
-      printf(OUTPUT ", 0x%2.2x", $temp)
-    }
-    $i++;$coffee_length--;
+
+	if ($cnt == $maxsize) {
+		$i = 0;
+		$cnt = 0;
+		$section++;
+		print(OUTPUT " };\n");
+	}
+
+	if ($cnt == 0) {
+		$section_size = min($coffee_length, $maxsize);
+		printf(OUTPUT  "const char data" . $section . $fvar . "[$section_size] $attribute = {\n$tab 0x%2.2x", $temp);
+	}
+	else {
+		if($i == 10) {
+		  printf(OUTPUT ",\n$tab 0x%2.2x", $temp);
+		  $i = 0;
+		} else {
+		  printf(OUTPUT ", 0x%2.2x", $temp);
+		}
+	}
+    $i++;
+	$coffee_length--;
+	$cnt++;
   }
 
   if ($coffee) {
@@ -309,7 +315,7 @@ foreach $file (@files) {if(-f $file) {
     }
     print (OUTPUT " $null");
   }
-  print (OUTPUT "};\n");
+  print (OUTPUT "$tab};\n\n");
   close(FILE);
   push(@fvars, $fvar);
   push(@pfiles, $file);
@@ -323,7 +329,7 @@ print(OUTPUT "struct httpd_fsdata_file {\n");
 print(OUTPUT "$tab const struct httpd_fsdata_file *next; //actual flash address of next link\n");
 print(OUTPUT "$tab const char *name;                     //offset to coffee file name\n");
 print(OUTPUT "$tab const char *data;                     //offset to coffee file data\n");
-print(OUTPUT "$tab const int len;                        //length of file data\n");
+print(OUTPUT "$tab const long len;                        //length of file data\n");
 print(OUTPUT "#if HTTPD_FS_STATISTICS == 1               //not enabled since list is in PROGMEM\n");
 print(OUTPUT "$tab uint16_t count;                       //storage for file statistics\n");
 print(OUTPUT "#endif\n");
@@ -345,8 +351,7 @@ for($i = 0; $i < @fvars; $i++) {
       $prevfile = "file" . $fvars[$i - 1];
   }
   $filename_offset=$data_offset+6+2*$coffee_page_t;
-  $coffee_offset=$data_offset+$coffee_header_length;
-  if ($coffee_offset>0xffff) {print "Warning : Linked list offset field overflow\n";}
+
   print(OUTPUT "const struct httpd_fsdata_file");
   for ($t=length($file);$t<16;$t++) {print(OUTPUT " ")};
   print(OUTPUT " file".$fvar."[] ");
@@ -355,17 +360,16 @@ for($i = 0; $i < @fvars; $i++) {
   for ($t=length($prevfile);$t<20;$t++) {print(OUTPUT " ")};
   print(OUTPUT "$prevfile, ");
   if ($coffee) {
+    $coffee_offset=$data_offset+$coffee_header_length;
+    if ($coffee_offset>0xffff) {print "Warning : Linked list offset field overflow\n";}
     printf(OUTPUT "(const char *)0x%4.4x, ",$filename_offset);
     printf(OUTPUT "(const char *)0x%4.4x, ",$coffee_offset);
     printf(OUTPUT "%5u}};\n",$flen[$i]);
   } else {
-    print(OUTPUT "data$fvar");
-    for ($t=length($file);$t<15;$t++) {print(OUTPUT " ")};
-    print(OUTPUT ", data$fvar");
-    for ($t=length($file);$t<15;$t++) {print(OUTPUT " ")};
-    print(OUTPUT " +".(length($file)+1).", sizeof(data$fvar)");
-    for ($t=length($file);$t<16;$t++) {print(OUTPUT " ")};
-    print(OUTPUT " -".(length($file)+1)."}};\n");
+    print(OUTPUT "name$fvar");
+    print(OUTPUT ", data0$fvar");
+    print(OUTPUT ",  $clen[$i]");
+    print(OUTPUT " }};\n");
   }
 }
 print(OUTPUT "\n#define HTTPD_FS_ROOT  file$fvars[$n-1]\n");

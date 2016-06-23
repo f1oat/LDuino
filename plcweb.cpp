@@ -80,13 +80,13 @@ static void main_page(Client& client, String status = "")
 }
 #endif
 
-static bool find_file(const char *path, char **data, int *len)
+static bool find_file(const char *path, const struct httpd_fsdata_segment **segment, int *len)
 {
-	const struct httpd_fsdata_file *p = HTTPD_FS_ROOT;
+	const struct httpd_fsdata_file *p = httpd_fsroot;
 	while (p) {
 		char *n = (char*)pgm_read_word(&(p->name));
 		if (strcmp_P(path, n) == 0) {
-			*data = (char*)pgm_read_word(&(p->data));
+			*segment = (const struct httpd_fsdata_segment *)pgm_read_word(&(p->first));
 			*len = pgm_read_word(&(p->len));
 			return true;
 		}
@@ -102,22 +102,30 @@ static boolean file_handler(TinyWebServer& web_server)
 
 	if (strcmp(path, "/") == 0) path = "/index.html";
 
-	char *data;
+	const struct httpd_fsdata_segment *segment;
 	int len;
 
-	if (find_file(path, &data, &len)) {
+	if (find_file(path, &segment, &len)) {
 		web_server.send_error_code(200);
 		web_server.send_content_type(web_server.get_mime_type_from_filename(path));
 		web_server.end_headers(); 
-
-		while (len > 0) {
-			uint8_t buf[256];
-			short i;
-			for (i = 0; i < len && i < sizeof(buf); i++) {
-				buf[i] = pgm_read_byte(data++);
+	
+		while (segment && len > 0) {
+			char *data = (char *)pgm_read_word(&(segment->data));
+			int i;
+			int segment_len = min(len, httpd_fsdata_segment_len);
+			
+			while (segment_len > 0) {
+				uint8_t buf[256];
+				int i;
+				for (i = 0; i < segment_len && i < sizeof(buf); i++) {
+					buf[i] = pgm_read_byte(data++);
+				}
+				segment_len -= i;
+				len -= i;
+				web_server.write(buf, i);
 			}
-			len -= i;
-			web_server.write(buf, i);
+			segment = (const struct httpd_fsdata_segment *)pgm_read_word(&(segment->next));
 		}
 	}
 	else {
