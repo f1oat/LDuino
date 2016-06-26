@@ -80,7 +80,7 @@ static void main_page(Client& client, String status = "")
 }
 #endif
 
-static bool find_file(const char *path, const struct httpd_fsdata_segment **segment, int *len)
+static bool find_file(const char *path, const struct httpd_fsdata_segment **segment, int *len, bool *use_gzip)
 {
 	const struct httpd_fsdata_file *p = httpd_fsroot;
 	while (p) {
@@ -88,6 +88,7 @@ static bool find_file(const char *path, const struct httpd_fsdata_segment **segm
 		if (strcmp_P(path, n) == 0) {
 			*segment = (const struct httpd_fsdata_segment *)pgm_read_word(&(p->first));
 			*len = pgm_read_word(&(p->len));
+			*use_gzip = pgm_read_byte(&(p->gzip));
 			return true;
 		}
 		p = (const struct httpd_fsdata_file *)pgm_read_word(&(p->next));
@@ -104,10 +105,12 @@ static boolean file_handler(TinyWebServer& web_server)
 
 	const struct httpd_fsdata_segment *segment;
 	int len;
+	bool use_gzip;
 
-	if (find_file(path, &segment, &len)) {
+	if (find_file(path, &segment, &len, &use_gzip)) {
 		web_server.send_error_code(200);
 		web_server.send_content_type(web_server.get_mime_type_from_filename(path));
+		if (use_gzip) web_server.write("Content-Encoding: gzip\n");
 		web_server.end_headers(); 
 	
 		while (segment && len > 0) {

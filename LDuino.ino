@@ -101,6 +101,7 @@ void setup() {
 			Serial << F("DHCP failure\n");
 		}
 		else {
+			Serial << F("DHCP ok\n");
 			IP_Config.local_ip = Ethernet.localIP();
 			IP_Config.subnet = Ethernet.subnetMask();
 			IP_Config.dns_server = Ethernet.dnsServerIP();
