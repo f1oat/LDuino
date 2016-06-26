@@ -1,0 +1,192 @@
+.LCD {
+    background: #F4F9B8;
+    font-family: Courier New;
+    text-align: center;
+    vertical-align: center;
+    font-size: 12px;
+    color: #000000;
+    font-weight: bold;
+    width: 30px;
+    border: 1px solid black;
+    /*+border-radius: 5px;*/
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    -khtml-border-radius: 5px;
+    border-radius: 5px;
+    padding: 2px;
+}
+
+#status {
+    border: 2px solid #000000;
+}
+
+.STATUS {
+    width: 30px;
+    text-align: right;
+    padding: 0;
+    border: 0px solid black;
+}
+
+table {
+    width: 100%;
+    text-align: center;
+}
+
+.LABEL {
+    background: #FFFFFF;
+    font-family: Courier New;
+    text-align: center;
+    vertical-align: center;
+    font-size: 20px;
+    color: #000000;
+    font-weight: bold;
+}
+
+.col1 {
+    font-weight: bold;
+    text-align: right;
+}
+
+.col2 {
+    text-align: left;
+}
+
+input[type=radio].LED {
+    position: absolute;
+    z-index: -1000;
+    left: -1000px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    width: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+}
+
+input[type=radio].LED + label.LED {
+    padding-left: 21px;
+    height: 16px;
+    display: inline-block;
+    line-height: 16px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    font-size: 16px;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+input[type=radio].LED:checked + label.LED {
+    background-position: 0 -16px;
+}
+
+label.LED {
+    background-image: url(http://csscheckbox.com/checkboxes/u/csscheckbox_d812d378e2fbf8a8c23c16391a1986f6.png);
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.P-1 {
+    text-align: center;
+    line-height: 1px;
+    font-family: "Comic Sans MS", cursive;
+    font-style: normal;
+    font-weight: normal;
+    color: #000000;
+    background-color: transparent;
+    font-variant: normal;
+    font-size: 16.0px;
+    vertical-align: 0;
+}
+
+.C-1 {
+    line-height: 23.00px;
+    font-family: "Comic Sans MS", cursive;
+    font-style: normal;
+    font-weight: normal;
+    color: #000000;
+    background-color: transparent;
+    text-decoration: none;
+    font-variant: normal;
+    font-size: 16.0px;
+    vertical-align: 0;
+}
+
+.OBJ-1 {
+    background: #F0F0F0;
+    font-family: Tahoma;
+    text-align: center;
+    font-size: 16px;
+    color: #000000;
+}
+
+.P-2 {
+    text-align: right;
+    line-height: 1px;
+    font-family: "Arial", sans-serif;
+    font-style: normal;
+    font-weight: 700;
+    color: #000000;
+    background-color: transparent;
+    font-variant: normal;
+    font-size: 13.0px;
+    vertical-align: 0;
+}
+
+.C-2 {
+    line-height: 16.00px;
+    font-family: "Arial", sans-serif;
+    font-style: normal;
+    font-weight: 700;
+    color: #000000;
+    background-color: transparent;
+    text-decoration: none;
+    font-variant: normal;
+    font-size: 13.3px;
+    vertical-align: 0;
+}
+
+.P-3 {
+    text-align: center;
+    line-height: 1px;
+    font-family: "Arial", sans-serif;
+    font-style: normal;
+    font-weight: 700;
+    color: #000000;
+    background-color: transparent;
+    font-variant: normal;
+    font-size: 13.0px;
+    vertical-align: 0;
+}
+
+.OBJ-2 {
+    background: #FFFFFF;
+}
+
+.OBJ-3 {
+    border-collapse: collapse;
+    border: none;
+}
+
+.TC-1 {
+    vertical-align: top;
+    padding: 1px 4px;
+    border: 2px solid #000000;
+}
+
+.C-3 {
+    line-height: 18.00px;
+    font-family: "Verdana", sans-serif;
+    font-style: normal;
+    font-weight: normal;
+    color: #000000;
+    background-color: transparent;
+    text-decoration: none;
+    font-variant: normal;
+    font-size: 16.0px;
+    vertical-align: 0;
+}

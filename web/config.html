@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <title>LDuino Config</title>
+    <meta name="generator" content="Serif WebPlus X7">
+    <meta name="viewport" content="width=400">
+    <!--Page Head-->
+		<script>
+		function init() {
+			var request = new XMLHttpRequest();
+			request.onreadystatechange = function () {
+			    if (this.readyState == XMLHttpRequest.DONE) {
+	            	if (this.responseXML != null) {        	
+	        			var v = this.responseXML.getElementsByTagName('config');
+	        			v = v[0].childNodes;
+	            		var nb = v.length;
+	            		for (count = 0; count < nb; count++) {
+	                		var n = v[count].nodeName;
+	                		if (n == '#text') continue;
+	                		var f = document.getElementsByName(n);
+	                		if (!f) continue;
+	                		f = f[0];
+	                		if (n == "useDHCP") {
+	                    		f.checked = (v[count].textContent == "1");
+	                		}
+	                		else {
+	                    		f.value = v[count].textContent;
+	                		}
+	            		}
+	            	}
+	            }
+	    	}
+	    	request.open("GET", "getconfig.xml", true);
+	    	request.timeout = 5000;
+	    	request.send(null);
+    	}
+		</script>
+    <link rel="stylesheet" type="text/css" href="wpscripts/wpstyles.css">
+    <style type="text/css">
+      .OBJ-1 { margin:0; }
+      .P-1 { text-align:right;line-height:1px;font-family:"Arial", sans-serif;font-style:normal;font-weight:700;color:#000000;background-color:transparent;font-variant:normal;font-size:16.0px;vertical-align:0; }
+      .C-1 { line-height:20.00px;font-family:"Arial", sans-serif;font-style:normal;font-weight:700;color:#000000;background-color:transparent;text-decoration:none;font-variant:normal;font-size:16.0px;vertical-align:0; }
+      .OBJ-2 { background:#ffffff; }
+      .OBJ-3 { background:#f0f0f0;font-family:Tahoma;text-align:center;font-size:16px;color:#000000; }
+    </style>
+    <script type="text/javascript" src="wpscripts/jquery.js"></script>
+    <script type="text/javascript" src="wpscripts/jquery.validate.min.js"></script>
+    <script type="text/javascript" src="wpscripts/jquery.validate.messages_fr.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+      $("#form_1").validate({ onkeyup: false, showErrors: function(errorMap, errorList) { if (errorList.length) alert(errorList[0].message); }, onclick: false, rules: {  }, onfocusout: false, messages: {  } });
+      $("#form_2").validate({ onkeyup: false, showErrors: function(errorMap, errorList) { if (errorList.length) alert(errorList[0].message); }, onclick: false, rules: {  }, onfocusout: false, messages: {  } });
+      });
+    </script>
+  </head>
+  <body onload="init()" style="height:387px;background:#ffffff;">
+    <div id="divMain" style="background:transparent;margin-left:auto;margin-right:auto;position:relative;width:400px;height:387px;">
+      <form id="form_1" method="post" target="_self" enctype="text/plain" class="OBJ-1" style="position:absolute;left:31px;top:37px;width:323px;height:237px;">
+        <div style="position:absolute;left:10px;top:10px;width:153px;height:27px;overflow:hidden;">
+          <p class="Normal P-1"><span class="C-1">Use DHCP:</span></p>
+        </div>
+        <input name="useDHCP" class="OBJ-2" type="checkbox" value="true" style="position:absolute;left:172px;top:14px;width:13px;height:13px;">
+        <div style="position:absolute;left:10px;top:34px;width:153px;height:31px;overflow:hidden;">
+          <p class="Normal P-1"><span class="C-1">MAC:</span></p>
+        </div>
+        <input name="mac" class="OBJ-2" style="position:absolute;left:171px;top:37px;width:135px;height:22px;">
+        <div style="position:absolute;left:10px;top:62px;width:153px;height:31px;overflow:hidden;">
+          <p class="Normal P-1"><span class="C-1">IP:</span></p>
+        </div>
+        <input name="ip" class="OBJ-2" style="position:absolute;left:171px;top:65px;width:135px;height:22px;">
+        <div style="position:absolute;left:10px;top:90px;width:153px;height:31px;overflow:hidden;">
+          <p class="Normal P-1"><span class="C-1">Subnet:</span></p>
+        </div>
+        <input name="subnet" class="OBJ-2" style="position:absolute;left:171px;top:93px;width:135px;height:22px;">
+        <div style="position:absolute;left:10px;top:118px;width:153px;height:31px;overflow:hidden;">
+          <p class="Normal P-1"><span class="C-1">Gateway:</span></p>
+        </div>
+        <input name="gateway" class="OBJ-2" style="position:absolute;left:171px;top:121px;width:135px;height:22px;">
+        <div style="position:absolute;left:10px;top:146px;width:153px;height:31px;overflow:hidden;">
+          <p class="Normal P-1"><span class="C-1">DNS:</span></p>
+        </div>
+        <input name="dns" class="OBJ-2" style="position:absolute;left:171px;top:149px;width:135px;height:22px;">
+        <div style="position:absolute;left:10px;top:174px;width:153px;height:31px;overflow:hidden;">
+          <p class="Normal P-1"><span class="C-1">MODBUS Baudrate:</span></p>
+        </div>
+        <input name="modbus_baudrate" class="OBJ-2" style="position:absolute;left:171px;top:177px;width:135px;height:22px;">
+        <input class="OBJ-3" type="submit" value="Save config" style="position:absolute;left:171px;top:205px;width:136px;height:22px;">
+      </form>
+      <form id="form_2" action="/upload" method="post" target="_self" enctype="multipart/form-data" class="OBJ-1" style="position:absolute;left:31px;top:290px;width:323px;height:71px;">
+        <input name="datafile" class="OBJ-2" type="file" style="position:absolute;left:9px;top:9px;width:295px;height:22px;">
+        <input class="OBJ-3" type="submit" value="Upload LDmicro XINT file" style="position:absolute;left:9px;top:36px;width:295px;height:24px;">
+      </form>
+    </div>
+  </body>
+</html>

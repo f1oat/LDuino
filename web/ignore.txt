@@ -1,0 +1,3 @@
+wpscripts/jquery*
+getconfig.xml
+getstate.xml

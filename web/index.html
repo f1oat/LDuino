@@ -1,0 +1,67 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>LDuino</title>
+    <meta name="generator" content="Serif WebPlus X7 (15,0,4,38)">
+    <meta name="viewport" content="width=753">
+    <!--Page Head-->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <script src=zepto.min.js></script>
+    <script src=lduino.js></script>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <link rel="stylesheet" type="text/css" href="wpscripts/wpstyles.css">
+</head>
+<body onload="init()" style="height:332px;background:#ffffff;">
+    <div id="divMain" style="background:transparent;margin-left:auto;margin-right:auto;position:relative;width:753px;height:332px;">
+        <div style="position:absolute;left:138px;top:12px;width:459px;height:23px;overflow:hidden;">
+            <p class="Corps P-1"><span class="C-1">LDuino -<wbr> © 2016 Frederic RIBLE (frible@teaser.fr)</span></p>
+        </div>
+        <input name="butn_2" class="OBJ-1" type="button" value="Reboot" onclick="reboot();" style="position:absolute;left:633px;top:291px;width:100px;height:22px;">
+        <input name="butn_2" class="OBJ-1" type="button" value="Config" onclick="return popup('config.html');" style="position:absolute;left:509px;top:291px;width:100px;height:22px;">
+        <table id='status' style="position:absolute;left:500px;top:51px;width:230px;height:171px;">
+            <tr>
+                <td class="col1">Program running:</td>
+                <td class="col2">
+                    <input class='LED' name='running_led' type='radio' id='running_led' />
+                    <label class='LED' for='running_led' id='running_led2' radGroup1></label>
+                </td>
+            </tr>
+            <tr>
+                <td class="col1">Opcodes:</td>
+                <td class="col2"><input id="opcodes" class="STATUS" maxlength="32" readonly="" value="----"></td>
+            </tr>
+            <tr>
+                <td class="col1">EEPROM:</td>
+                <td class="col2"><input id="program_len" class="STATUS" maxlength="32" readonly="" value="----"> /<input id="eeprom_len" class="STATUS" maxlength="32" readonly="" value="----"></td>
+            </tr>
+            <tr>
+                <td class="col1">I/O vars:</td>
+                <td class="col2"><input id="io_nb" class="STATUS" maxlength="32" readonly="" value="----"></td>
+            </tr>
+            <tr>
+                <td class="col1">Internal vars:</td>
+                <td class="col2"><input id="internal_vars" class="STATUS" maxlength="32" readonly="" value="----"></td>
+            </tr>
+            <tr>
+                <td class="col1">Cycle:</td>
+                <td class="col2"><input id="cycle" class="STATUS" maxlength="32" readonly="" value="----"> ms</td>
+            </tr>
+            <tr>
+                <td class="col1">Processing time:</td>
+                <td class="col2"><input id="processing" class="STATUS" maxlength="32" readonly="" value="----"> µs</td>
+            </tr>
+        </table>
+        <table id="panel" border="1" class="OBJ-3" style="position:absolute;left:10px;top:51px;width:471px;height:171px;">
+            <tr style="height:169px;">
+                <td class="TC-1">
+                </td>
+                <td class="TC-1">
+                </td>
+                <td class="TC-1">
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
