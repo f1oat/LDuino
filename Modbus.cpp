@@ -41,6 +41,20 @@ void Modbus::addReg(word address, word value) {
     }
 }
 
+void Modbus::clearRegs() {
+	TRegister *reg = _regs_head;
+
+	if (reg == 0) return;
+
+	do {
+		TRegister *next = reg->next;
+		free(reg);
+		reg = next;
+	} while (reg);
+
+	_regs_head = _regs_last = 0;
+}
+
 bool Modbus::Reg(word address, word value) {
     TRegister *reg;
     //search for the register address

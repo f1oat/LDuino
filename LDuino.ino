@@ -87,6 +87,7 @@ void pollPLC()
 
 void setup() {
 	Serial.begin(115200);
+	Serial << F("Setup\n");
 
 	IP_Config.LoadConfig();
 
@@ -131,7 +132,10 @@ void loop() {
 	//lduino.Engine();
 	if (doReset) {
 		Serial << "Reset requested\n";
+		Timer1.stop();
+		noInterrupts();
+		wdt_disable();
 		wdt_enable(WDTO_1S);
-		for (;;);
+		doReset = false;
 	}
 }

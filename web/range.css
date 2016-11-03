@@ -1,0 +1,91 @@
+INPUT[type="range"] {
+  width: 100%;
+  margin-top: 7.3px;
+  margin-right: 0px;
+  margin-bottom: 7.3px;
+  margin-left: 0px;
+}
+
+INPUT[type="range"]:focus {
+  outline-width: medium;
+  outline-style: none;
+  outline-color: -moz-initial;
+}
+
+INPUT[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 8.4px;
+  cursor: pointer;
+box-shadow: 0px 0px 0.1px black, 0px 0px 0px #0d0d0d;
+  background-color: #2d89c6;
+  background-image: none;
+  background-repeat: repeat;
+  background-attachment: scroll;
+  background-position: 0% 0%;
+  border-radius: 1.3px;
+  border-top-width: 0.2px;
+  border-top-style: solid;
+  border-top-color: #010101;
+  border-right-width: 0.2px;
+  border-right-style: solid;
+  border-right-color: #010101;
+  border-bottom-width: 0.2px;
+  border-bottom-style: solid;
+  border-bottom-color: #010101;
+  border-left-width: 0.2px;
+  border-left-style: solid;
+  border-left-color: #010101;
+}
+
+#pwm_value {
+  font-family: arial;
+  font-weight: bold;
+  border-top-width: 1px;
+  border-top-style: solid;
+  border-top-color: #2d89c6;
+  border-right-width: 1px;
+  border-right-style: solid;
+  border-right-color: #2d89c6;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: #2d89c6;
+  border-left-width: 1px;
+  border-left-style: solid;
+  border-left-color: #2d89c6;
+  padding-top: 4px;
+  padding-right: 4px;
+  padding-bottom: 4px;
+  padding-left: 4px;
+  border-radius: 5px;
+  font-size: 15px;
+}
+
+INPUT[type="range"]::-moz-range-thumb {
+box-shadow: 1px 1px 1px black, 0px 0px 1px #0d0d0d;
+  border-top-width: 1px;
+  border-top-style: solid;
+  border-top-color: #810000;
+  border-right-width: 1px;
+  border-right-style: solid;
+  border-right-color: #810000;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: #810000;
+  border-left-width: 1px;
+  border-left-style: solid;
+  border-left-color: #810000;
+  height: 23px;
+  width: 7px;
+  border-radius: 3px;
+  background-color: rgba(154, 161, 211, 0.79);
+  background-image: none;
+  background-repeat: repeat;
+  background-attachment: scroll;
+  background-position: 0% 0%;
+  cursor: pointer;
+}
+
+#reboot {
+  background-color: #1d812a;
+}
+

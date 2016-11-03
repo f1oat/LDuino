@@ -52,6 +52,8 @@ public:
 	unsigned long GetTime() { return time; };
 	void PrintStats(Print & stream);
 	int GetType(int pin, signed short * value);
+	void setPWM(int pin, signed short value);
+	void setDigital(int pin, signed short value);
 	void XML_DumpDigitalPins(xmlstring & str, int first, int last, int offset);
 	void XML_DumpAnalogPins(xmlstring & str, int first, int last, int offset);
 	void XML_State(Print & stream);
@@ -71,25 +73,16 @@ private:
 	typedef unsigned short WORD;    // 16-bit unsigned
 	typedef signed short SWORD;     // 16-bit signed
 	
-#define IO_TYPE_PENDING         0
-#define IO_TYPE_GENERAL         1
-#define IO_TYPE_PERSIST         2
-#define IO_TYPE_STRING          3
-#define IO_TYPE_RTO             4
-#define IO_TYPE_COUNTER         5
-#define IO_TYPE_INT_INPUT       6
-#define IO_TYPE_DIG_INPUT       7
-#define IO_TYPE_DIG_OUTPUT      8
-#define IO_TYPE_READ_ADC        9
-#define IO_TYPE_UART_TX         10
-#define IO_TYPE_UART_RX         11
-#define IO_TYPE_PWM_OUTPUT      12
-#define IO_TYPE_INTERNAL_RELAY  13
-#define IO_TYPE_TON             14
-#define IO_TYPE_TOF             15
-#define IO_TYPE_MODBUS_CONTACT  16
-#define IO_TYPE_MODBUS_COIL     17
-#define IO_TYPE_MODBUS_HREG     18
+
+#define XIO_TYPE_PENDING		 0
+#define XIO_TYPE_DIG_INPUT       1
+#define XIO_TYPE_DIG_OUTPUT      2
+#define XIO_TYPE_READ_ADC        3
+#define XIO_TYPE_PWM_OUTPUT      4
+#define XIO_TYPE_MODBUS_CONTACT  5
+#define XIO_TYPE_MODBUS_COIL     6
+#define XIO_TYPE_MODBUS_HREG     7
+
 
 	typedef struct PlcProgramSingleIoTag {
 		BYTE    type;
@@ -102,7 +95,7 @@ private:
 	boolean READ_BIT(BYTE addr);
 	void WRITE_INT(BYTE addr, SWORD value);
 	SWORD READ_INT(BYTE addr);
-	void WRITE_PWM(BYTE addr);
+	void WRITE_PWM(BYTE addr, SWORD value);
 	void READ_ADC(BYTE addr);
 
 	Modbus *mb;

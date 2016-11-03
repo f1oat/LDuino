@@ -33,6 +33,34 @@
 
 #include "httpd-fsdata.h"
 
+#if 0
+#include "utility/w5100.h"
+void W5100_reset(void)
+{
+	Serial << "W5100 reset\n";
+
+	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
+	W5100Class::writeMR(1 << 7);
+	W5100Class::writeTMSR(0x55);
+	W5100Class::writeRMSR(0x55);
+	SPI.endTransaction();
+
+	Serial << "Transaction done\n";
+
+	uint8_t resetState;
+	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
+	do {
+		resetState = W5100Class::readMR();
+		Serial << resetState << '\n';
+		delay(100);
+	} while ((resetState & (1 << 7)) != 0);
+	SPI.endTransaction();
+
+	delay(100);
+}
+#endif
+
+
 extern LDuino_engine lduino;
 extern IP_Config_t IP_Config;
 extern bool doReset;
@@ -288,6 +316,29 @@ void poll_PLC_Web()
 	web.process();
 }
 
+static void manage_setvalue(const char *path)
+{
+	char *port = strstr(path, "&set=");
+	if (!port) return;
+	port += 5;
+
+	char *value = strstr(path, "&value=");
+	if (!value) return;
+	value += 7;
+
+	switch (*port) {
+	case 'D':
+	{
+		int r = atoi(port + 1);
+		if (r < 0 || r > 11) return;
+		r += 2;
+		Serial << "setPWM " << r << " " << value <<"\n";
+		lduino.setPWM(r, atoi(value));
+		break;
+	}
+	}
+}
+
 static void manage_toggle(const char *path)
 {	
 	char *toggle = strstr(path, "&toggle=");
@@ -301,7 +352,7 @@ static void manage_toggle(const char *path)
 		if (r < 0 || r > 11) return;
 		r += 2;
 		Serial << "toggle " << r << "\n";
-		digitalWrite(r, !digitalRead(r));
+		lduino.setDigital(r, !digitalRead(r));
 		break;
 	}
 	case 'R':
@@ -310,7 +361,7 @@ static void manage_toggle(const char *path)
 		if (r < 0 || r > 9) return;
 		r += 22;
 		Serial << "toggle " << r << "\n";
-		digitalWrite(r, !digitalRead(r));
+		lduino.setDigital(r, !digitalRead(r));
 		break;
 	}
 	case 'r':
@@ -331,6 +382,7 @@ static boolean getstate_handler(TinyWebServer& web_server)
 	web_server.end_headers();
 
 	manage_toggle(web_server.get_path());
+	manage_setvalue(web_server.get_path());
 	Client& stream = web_server.get_client();
 	lduino.XML_State(stream);
 	return true;

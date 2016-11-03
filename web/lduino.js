@@ -12,7 +12,15 @@ function popup(url) {
     return false;
 }
 
-strToggle = "";
+var strToggle = "";
+var strSetPWM= "";
+var statusOK = false;
+
+function ToggleTrafficIndicator(a)
+{
+    if (a) $("#traffic-indicator").removeClass("paused");
+    else $("#traffic-indicator").addClass("paused");
+}
 
 function setLED(id, v) {
     $("#" + id + "_led").prop("checked", v ? true : false);
@@ -33,14 +41,13 @@ function setLCD(id, v) {
 
 function resetLED(id) {
     setLED(id, false);
-    //var f = document.getElementById(id);
     var f = $("#" + id + "_led").get(0);
     f.onclick = function () { Toggle(this) };
 }
 
 function resetLCD(id) {
-    //var f = document.getElementById(id + '_lcd');
-    //f.style.visibility = "hidden";
+    var f = $("#" + id + "_lcd").get(0);
+    f.onclick = function () { PromptPWM(this) };
 }
 
 function createPanelLine(id1, id2) {
@@ -52,13 +59,13 @@ function createPanelLine(id1, id2) {
     return tr;
 }
 
-function IO(id)
+function createIO(id)
 {
     var html = "";
     html += "<td>";
     html += "<input class='LCD' id='" + id + "_lcd' maxlength='4' readonly='true' value='----' />";
-    html += "<input class='LED' name='" + id + "_led' type='radio' id='" + id + "_led'/>";
-    html += "<label class='LED' for='" + id + "_led' id='" + id + "_led2' radGroup1></label>";
+    html += "<input class='LED' name='" + id + "_led' type='checkbox' id='" + id + "_led'/>";
+    html += "<label class='LED' for='" + id + "_led' id='" + id + "_led2'></label>";
     html += "</td>";
 
     return html;
@@ -72,19 +79,18 @@ function createSubPanel(col, prefix, nb) {
         if (id2 == "A10") id2 = "IN0";
         if (id2 == "A11") id2 = "IN1";
         html += "<tr>"
-        html += "<td class='LABEL'>" + id1 + "</td>";
-        html += IO(id1);
-        html += IO(id2);
-        html += "<td class='LABEL'>" + id2 + "</td>"
+        html += "<td class='LABEL' onclick='configPin(this)'>" + id1 + "</td>";
+        html += createIO(id1);
+        html += createIO(id2);
+        html += "<td class='LABEL' onclick='configPin(this)'>" + id2 + "</td>"
         html += "</tr>";
     }
     html += "</table>";
-    cell = $("#panel tr").children("td").eq(col);
+    cell = $("#io_" + col);
     cell.html(html);
 }
 
 function createPanel() {
-    p = $("#panel tr").children("td");
     createSubPanel(0, "A", 12);
     createSubPanel(1, "D", 12);
     createSubPanel(2, "R", 10);
@@ -115,8 +121,9 @@ function init() {
 }
 
 function updateLEDs(xml, tag, prefix) {
-    var pins = xml.getElementsByTagName(tag)[0].firstChild.nodeValue;
-    var plist = pins.split(",");
+    var pins = xml.getElementsByTagName(tag)[0].firstChild;
+    if (!pins) return;
+    var plist = pins.nodeValue.split(",");
     var nb = plist.length;
     for (count = 0; count < nb; count++) {
         var x = plist[count].split(":");
@@ -125,8 +132,9 @@ function updateLEDs(xml, tag, prefix) {
 }
 
 function updateLCDs(xml, tag, prefix) {
-    var pins = xml.getElementsByTagName(tag)[0].firstChild.nodeValue;
-    var plist = pins.split(",");
+    var pins = xml.getElementsByTagName(tag)[0].firstChild;
+    if (!pins) return;
+    var plist = pins.nodeValue.split(",");
     var nb = plist.length;
     for (count = 0; count < nb; count++) {
         var x = plist[count].split(":");
@@ -138,9 +146,15 @@ function GetArduinoIO() {
     nocache = "&nocache=" + Math.random() * 1000000;
     var request = new XMLHttpRequest();
 
+    if (!statusOK) ToggleTrafficIndicator(false);
+
     request.onreadystatechange = function () {
         if (this.readyState == XMLHttpRequest.DONE && this.status == 200) {
             if (this.responseXML != null) {
+                statusOK = true;
+                ToggleTrafficIndicator(true);
+                document.body.style.background = "white";
+
                 // XML file received - contains analog values, switch values and LED states
                 var count;
 
@@ -158,7 +172,7 @@ function GetArduinoIO() {
                 for (count = 0; count < nb; count++) {
                     var n = v[count].nodeName;
                     if (n == '#text') continue;
-                    if (n == strToggle) continue;
+                    //if (n == strToggle) continue;
                     if (n == "running") {
                         setLED(n, (v[count].textContent == "1"));
                     }
@@ -174,15 +188,47 @@ function GetArduinoIO() {
     if (strToggle != "") {
         params += "&toggle=" + strToggle;
     }
+    if (strSetPWM != "") {
+        params += strSetPWM;
+    }
     request.open("GET", "getstate.xml" + params, true);
     request.timeout = 5000;
     request.send(null);
 
+    statusOK = false;
     setTimeout('GetArduinoIO()', 1000);
     strToggle = "";
+    strSetPWM = "";
 }
 
 function Toggle(src) {
+    src.checked = !src.checked; // State refresh will come from the PLC
     strToggle =  src.id.replace("_led", "");
     console.log("Toggle " + strToggle);
+}
+
+function PromptPWM(src)
+{
+    var modal = $('#setPWM_modal').get(0);
+    var oldvalue = parseInt(src.value);
+    $("#pwm_value").val(oldvalue);
+    $("#pwm_range").val(oldvalue);
+    modal.style.display = "block";
+
+    window.onclick = function (event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    $("#pwm_ok").get(0).onclick = function () {
+        var newvalue = $("#pwm_value").val();
+        strSetPWM = "&setPWM=" + src.id.replace("_lcd", "") + "&value=" + newvalue;
+        console.log("SetPWM " + strSetPWM);
+    }
+}
+
+function configPin(src)
+{
+    console.log("Config pin " + src.innerText);
 }

@@ -13,7 +13,7 @@
 #define __AVR_ATmega2560__
 #define DEBUG 0
 #define F_CPU 16000000L
-#define ARDUINO 10608
+#define ARDUINO 10609
 #define ARDUINO_AVR_MEGA2560
 #define ARDUINO_ARCH_AVR
 #define __cplusplus 201103L

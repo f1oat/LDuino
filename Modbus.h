@@ -80,6 +80,7 @@ class Modbus {
     public:
         Modbus();
 
+		void clearRegs();
         void addHreg(word offset, word value = 0);
         bool Hreg(word offset, word value);
         word Hreg(word offset);

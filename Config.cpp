@@ -92,7 +92,7 @@ void IP_Config_t::LoadConfig()
 
 void IP_Config_t::ParseConfig(StringParse &buf)
 {
-	useDHCP = buf.Get(F("useDHCP")) == "true" ? true : false;
+	useDHCP = buf.Get(F("useDHCP")) == "on" ? true : false;
 	Ascii2MAC(buf.Get(F("mac")), mac_address);
 	Ascii2IP(buf.Get(F("ip")), local_ip);
 	Ascii2IP(buf.Get(F("subnet")), subnet);

@@ -116,13 +116,13 @@ void LDuino_engine::LoadProgramLine(char *line)
 				if (!p) goto err;
 				nbProgram = atoi(p);
 				Program = new BYTE[nbProgram]();
-				D(Serial << "nbProgram=" << nbProgram << "\n");
+				Serial << F("nbProgram=") << nbProgram << "\n";
 				break;
 			}
 			
 			for (char *t = line; t[0] >= 32 && t[1] >= 32; t += 2) {
 				Program[pc++] = HexDigit(t[1]) | (HexDigit(t[0]) << 4);
-				D(Serial << "New Opcode[" << pc - 1 << "]=" << Program[pc - 1] << '\n');
+				Serial << F("New Opcode[") << pc - 1 << "]=" << Program[pc - 1] << '\n';
 			}
 			break;
 		}
@@ -142,11 +142,12 @@ void LDuino_engine::LoadProgramLine(char *line)
 				total_nbIO = atoi(p);
 				Values = new SWORD[total_nbIO]();
 
-				D(Serial << "nbIO=" << nbIO << " total_nbIO=" << total_nbIO << "\n");
+				Serial << F("nbIO=") << nbIO << F(" total_nbIO=") << total_nbIO << "\n";
 				break;
 			}
 
 			// 0 Xin 7 6 0 0
+			Serial << line << '\n';
 			char *p;
 			p = strtok(line, " ");	// Addr
 			if (!p) goto err;
@@ -160,7 +161,12 @@ void LDuino_engine::LoadProgramLine(char *line)
 					&IO[addr].pin, 
 					&IO[addr].ModbusSlave, 
 					&IO[addr].ModbusOffset);
-			D(Serial << "New IO[" << addr << "]=" << p << '\n');
+			Serial << F("New IO[") << addr << F("]:")
+				   << F(" type=") << IO[addr].type
+				   << F(" pin=") << IO[addr].pin
+				   << F(" ModbusSlave=") << IO[addr].ModbusSlave
+				   << F(" ModbusOffset=") << IO[addr].ModbusOffset
+				   <<'\n';
 			break;
 		}
 		case st_cycle:
@@ -199,15 +205,20 @@ void LDuino_engine::ConfigureModbus(void)
 {
 	if (!mb) return;
 
+	mb->clearRegs();
+
 	for (int addr = 0; addr < nbIO; addr++) {
 		switch (IO[addr].type) {
-		case IO_TYPE_MODBUS_COIL:
-			mb->addCoil(IO[addr].ModbusOffset);
+		case XIO_TYPE_MODBUS_COIL:
+			Serial << F("Add Modbus Contact ") << IO[addr].ModbusOffset << '\n';
+			mb->addIsts(IO[addr].ModbusOffset);	// We are slave, so coil on master side is contact on our side
 			break;
-		case IO_TYPE_MODBUS_CONTACT:
-			mb->addIsts(IO[addr].ModbusOffset);
+		case XIO_TYPE_MODBUS_CONTACT:
+			Serial << F("Add Modbus Coil ") << IO[addr].ModbusOffset << '\n';
+			mb->addCoil(IO[addr].ModbusOffset);	// We are slave, so coil on master side is contact on our side
 			break;
-		case IO_TYPE_MODBUS_HREG:
+		case XIO_TYPE_MODBUS_HREG:
+			Serial << F("Add Modbus Hreg ") << IO[addr].ModbusOffset << '\n';
 			mb->addHreg(IO[addr].ModbusOffset);
 			break;
 		}
@@ -274,8 +285,8 @@ void LDuino_engine::InterpretOneCycle(void)
 			break;
 
 		case INT_SET_PWM:
-			WRITE_PWM(Program[pc + 1]);	 // PWM frequency is ignored
-			pc += 4;
+			WRITE_PWM(Program[pc + 4], Values[Program[pc + 1]]);	 // PWM frequency is ignored
+			pc += 5;
 			break;
 
 		case INT_READ_ADC:
@@ -379,7 +390,30 @@ int LDuino_engine::GetType(int pin, signed short *value)
 	}
 
 	*value = digitalRead(pin);
-	return IO_TYPE_PENDING;
+	return XIO_TYPE_PENDING;
+}
+
+void LDuino_engine::setPWM(int pin, signed short value)
+{
+	for (int addr = 0; addr < nbIO; addr++) {
+		if (IO[addr].pin == pin) {
+			Values[addr] = value;
+			analogWrite(pin, value);
+			break;
+		}
+	}
+}
+
+void LDuino_engine::setDigital(int pin, signed short value)
+{
+	for (int addr = 0; addr < nbIO; addr++) {
+		if (IO[addr].pin == pin) {
+			Values[addr] = value;
+			break;
+		}
+	}
+	
+	digitalWrite(pin, value);
 }
 
 // Read digital pins, avoid pins that are configure for PWM or analog input
@@ -392,9 +426,9 @@ void LDuino_engine::XML_DumpDigitalPins(xmlstring &str, int first, int last, int
 	for (short r = first; r <= last; r++) {
 		short pin = r + offset;
 		switch (GetType(pin, &value)) {
-		case IO_TYPE_DIG_INPUT:
-		case IO_TYPE_DIG_OUTPUT:
-		case IO_TYPE_PENDING:
+		case XIO_TYPE_DIG_INPUT:
+		case XIO_TYPE_DIG_OUTPUT:
+		case XIO_TYPE_PENDING:
 			if (comma) str += ',';
 			str += String(r) + ':' + String(value);
 			comma = true;
@@ -411,8 +445,8 @@ void LDuino_engine::XML_DumpAnalogPins(xmlstring &str, int first, int last, int 
 	for (short r = first; r <= last; r++) {
 		short pin = r + offset;
 		switch (GetType(pin, &value)) {
-		case IO_TYPE_READ_ADC:
-		case IO_TYPE_PWM_OUTPUT:
+		case XIO_TYPE_READ_ADC:
+		case XIO_TYPE_PWM_OUTPUT:
 			if (comma) str += ',';
 			str += String(r) + ':' + String(value);
 			comma = true;
@@ -531,11 +565,11 @@ void LDuino_engine::WRITE_BIT(BYTE addr, boolean value)
 	if (Values[addr] == value) return;
 	if (addr < nbIO) {
 		switch (IO[addr].type) {
-		case IO_TYPE_DIG_OUTPUT:
+		case XIO_TYPE_DIG_OUTPUT:
 			digitalWrite(IO[addr].pin, value);
 			break;
-		case IO_TYPE_MODBUS_COIL:
-			if (mb) mb->Coil(IO[addr].ModbusOffset, value);
+		case XIO_TYPE_MODBUS_COIL:
+			if (mb) mb->Ists(IO[addr].ModbusOffset, value);
 			break;
 		}
 	}
@@ -548,10 +582,13 @@ boolean LDuino_engine::READ_BIT(BYTE  addr)
 {
 	if (addr < nbIO) {
 		switch (IO[addr].type) {
-		case IO_TYPE_DIG_INPUT:
+		case XIO_TYPE_DIG_INPUT:
 			Values[addr] = digitalRead(IO[addr].pin);
 			break;
-		case IO_TYPE_MODBUS_COIL:
+		case XIO_TYPE_MODBUS_COIL:
+			if (mb) Values[addr] = mb->Ists(IO[addr].ModbusOffset);
+			break;
+		case XIO_TYPE_MODBUS_CONTACT:
 			if (mb) Values[addr] = mb->Coil(IO[addr].ModbusOffset);
 			break;
 		}
@@ -567,7 +604,7 @@ void LDuino_engine::WRITE_INT(BYTE  addr, SWORD value)
 
 	if (addr < nbIO) {
 		switch (IO[addr].type) {
-		case IO_TYPE_MODBUS_HREG:
+		case XIO_TYPE_MODBUS_HREG:
 			if (mb) mb->Hreg(IO[addr].ModbusOffset, value);
 			break;
 		}
@@ -581,7 +618,7 @@ LDuino_engine::SWORD LDuino_engine::READ_INT(BYTE  addr)
 {
 	if (addr < nbIO) {
 		switch (IO[addr].type) {
-		case IO_TYPE_MODBUS_HREG:
+		case XIO_TYPE_MODBUS_HREG:
 			if (mb) Values[addr] = mb->Hreg(IO[addr].ModbusOffset);
 			break;
 		}
@@ -591,9 +628,11 @@ LDuino_engine::SWORD LDuino_engine::READ_INT(BYTE  addr)
 	return Values[addr];
 }
 
-void LDuino_engine::WRITE_PWM(BYTE addr)
+void LDuino_engine::WRITE_PWM(BYTE addr, SWORD value)
 {
-	analogWrite(IO[addr].pin, Values[addr]);
+	if (Values[addr] == value) return;
+	analogWrite(IO[addr].pin, value);
+	Values[addr] = value;
 }
 
 void LDuino_engine::READ_ADC(BYTE addr)
