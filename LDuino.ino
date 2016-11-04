@@ -120,7 +120,7 @@ void setup() {
 	setup_MODBUS();
 	setup_PLC_Web();	// Web server init
 
-	Timer1.initialize(10000);	//TODO: use cycle time defined in XINT program
+	Timer1.initialize(lduino.getCycleMS() * 1000L);
 	Timer1.attachInterrupt(pollPLC);
 
 	Serial << F("PLC ready\n");

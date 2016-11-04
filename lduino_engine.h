@@ -66,6 +66,8 @@ public:
 	void ToggleProgramRunning(void) { if (ProgramReady) ProgramRunning = !ProgramRunning; }
 	void ToggleIO_Polling(void) { IO_Polling = !IO_Polling; }
 
+	short getCycleMS() { return cycle_ms; }
+
 private:
 	void LoadProgramLine(char *line);	
 	void ConfigureModbus(void);
