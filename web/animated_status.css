@@ -1,0 +1,61 @@
+/*
+    http://codepen.io/amustill/pen/dgjxE
+*/
+.loading
+{
+	display: inline-block;
+	border-width: 10px;
+	border-radius: 50%;
+	-webkit-animation: spin 1s linear infinite;
+	-moz-animation: spin 1s linear infinite;
+	-o-animation: spin 1s linear infinite;
+	animation: spin 1s linear infinite;
+}
+.style-1
+{
+	border-style: solid;
+	border-color: #1AAF56 transparent;
+}
+@-webkit-keyframes spin
+{
+	100%
+	{
+		-webkit-transform: rotate(359deg);
+	}
+}
+@-moz-keyframes spin
+{
+	100%
+	{
+		-moz-transform: rotate(359deg);
+	}
+}
+#traffic-indicator
+{
+	/*+placement: 15px 0px;*/
+	position: relative;
+	left: 15px;
+	top: 0px;
+}
+@-o-keyframes spin
+{
+	100%
+	{
+		-moz-transform: rotate(359deg);
+	}
+}
+@keyframes spin
+{
+	100%
+	{
+		transform: rotate(359deg);
+	}
+}
+.paused
+{
+	-webkit-animation-play-state: paused;
+	-moz-animation-play-state: paused;
+	-o-animation-play-state: paused;
+	animation-play-state: paused;
+	border-color: #EB380D transparent;
+}
