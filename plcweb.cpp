@@ -66,6 +66,7 @@ extern IP_Config_t IP_Config;
 extern bool doReset;
 
 static boolean file_handler(TinyWebServer& web_server);
+static void manage_toggle(const char * path);
 static boolean getstate_handler(TinyWebServer& web_server);
 static boolean setconfig_handler(TinyWebServer& web_server);
 static boolean getconfig_handler(TinyWebServer& web_server);
@@ -336,6 +337,15 @@ static void manage_setvalue(const char *path)
 		lduino.setPWM(r, atoi(value));
 		break;
 	}
+	case 'A':
+	{
+		int r = atoi(port + 1);
+		if (r < 0 || r > 11) return;
+		r += 54;
+		Serial << "setAnalog " << r << " " << value << "\n";
+		lduino.setAnalogInput(r, atoi(value));
+		break;
+	}
 	}
 }
 
@@ -345,14 +355,14 @@ static void manage_toggle(const char *path)
 	if (!toggle) return;
 	toggle += 8;
 	
-	switch (*toggle) {
+	switch (*toggle) {	
 	case 'D':
 	{
 		int r = atoi(toggle + 1);
 		if (r < 0 || r > 11) return;
 		r += 2;
 		Serial << "toggle " << r << "\n";
-		lduino.setDigital(r, !digitalRead(r));
+		lduino.toggleDigitalOutput(r);
 		break;
 	}
 	case 'R':
@@ -361,11 +371,23 @@ static void manage_toggle(const char *path)
 		if (r < 0 || r > 9) return;
 		r += 22;
 		Serial << "toggle " << r << "\n";
-		lduino.setDigital(r, !digitalRead(r));
+		lduino.toggleDigitalOutput(r);
+		break;
+	}
+	case 'A':
+	{
+		int r = atoi(toggle + 1);
+		if (r < 0 || r > 11) return;
+		r += 54;
+		Serial << "toggle " << r << "\n";
+		lduino.toggleDigitalInput(r);
 		break;
 	}
 	case 'r':
 		lduino.ToggleProgramRunning();
+		break;
+	case 'i':
+		lduino.ToggleIO_Polling();
 		break;
 	default:
 		break;

@@ -176,6 +176,7 @@ void LDuino_engine::LoadProgramLine(char *line)
 			ConfigureModbus();
 			ProgramReady = true;
 			ProgramRunning = true;
+			IO_Polling = true;
 			D(Serial.println("Program Ready"));
 			D(Serial.print("cycle time (ms): "));
 			D(Serial.println(cycle_ms));
@@ -398,13 +399,13 @@ void LDuino_engine::setPWM(int pin, signed short value)
 	for (int addr = 0; addr < nbIO; addr++) {
 		if (IO[addr].pin == pin) {
 			Values[addr] = value;
-			analogWrite(pin, value);
+			if (IO_Polling) analogWrite(pin, value);
 			break;
 		}
 	}
 }
 
-void LDuino_engine::setDigital(int pin, signed short value)
+void LDuino_engine::setAnalogInput(int pin, signed short value)
 {
 	for (int addr = 0; addr < nbIO; addr++) {
 		if (IO[addr].pin == pin) {
@@ -412,8 +413,28 @@ void LDuino_engine::setDigital(int pin, signed short value)
 			break;
 		}
 	}
-	
-	digitalWrite(pin, value);
+}
+
+void LDuino_engine::toggleDigitalOutput(int pin)
+{
+	for (int addr = 0; addr < nbIO; addr++) {
+		if (IO[addr].pin == pin) {
+			Values[addr] = !Values[addr];
+			if (IO_Polling) digitalWrite(pin, Values[addr]);
+			return;
+		}
+	}
+	if (IO_Polling) digitalWrite(pin, !digitalRead(pin));
+}
+
+void LDuino_engine::toggleDigitalInput(int pin)
+{
+	for (int addr = 0; addr < nbIO; addr++) {
+		if (IO[addr].pin == pin) {
+			Values[addr] = !Values[addr];
+			return;
+		}
+	}
 }
 
 // Read digital pins, avoid pins that are configure for PWM or analog input
@@ -425,12 +446,13 @@ void LDuino_engine::XML_DumpDigitalPins(xmlstring &str, int first, int last, int
 
 	for (short r = first; r <= last; r++) {
 		short pin = r + offset;
-		switch (GetType(pin, &value)) {
+		short rc = GetType(pin, &value);
+		switch (rc) {
 		case XIO_TYPE_DIG_INPUT:
 		case XIO_TYPE_DIG_OUTPUT:
 		case XIO_TYPE_PENDING:
 			if (comma) str += ',';
-			str += String(r) + ':' + String(value);
+			str += String(r) + ':' + String(value) + ':' + String(rc != XIO_TYPE_PENDING);
 			comma = true;
 			break;
 		}
@@ -462,6 +484,7 @@ void LDuino_engine::XML_State(Print & stream)
 	str += F("<?xml version = \"1.0\" ?>\n");
 	str += F("<state>\n");
 	str.catTag(F("running"), ProgramRunning);
+	str.catTag(F("io_polling"), IO_Polling);
 	str.catTag(F("program_len"), EEPROM_ProgramLen);
 	str.catTag(F("eeprom_len"), EEPROM.length());
 	str.catTag(F("opcodes"), nbProgram);
@@ -558,6 +581,7 @@ void LDuino_engine::LoadConfig()
 	EEPROM_ProgramLen = p;
 	ProgramRunning = true;
 	ProgramReady = true;
+	IO_Polling = true;
 }
 
 void LDuino_engine::WRITE_BIT(BYTE addr, boolean value)
@@ -566,7 +590,7 @@ void LDuino_engine::WRITE_BIT(BYTE addr, boolean value)
 	if (addr < nbIO) {
 		switch (IO[addr].type) {
 		case XIO_TYPE_DIG_OUTPUT:
-			digitalWrite(IO[addr].pin, value);
+			if (IO_Polling) digitalWrite(IO[addr].pin, value);
 			break;
 		case XIO_TYPE_MODBUS_COIL:
 			if (mb) mb->Ists(IO[addr].ModbusOffset, value);
@@ -583,7 +607,7 @@ boolean LDuino_engine::READ_BIT(BYTE  addr)
 	if (addr < nbIO) {
 		switch (IO[addr].type) {
 		case XIO_TYPE_DIG_INPUT:
-			Values[addr] = digitalRead(IO[addr].pin);
+			if (IO_Polling) Values[addr] = digitalRead(IO[addr].pin);
 			break;
 		case XIO_TYPE_MODBUS_COIL:
 			if (mb) Values[addr] = mb->Ists(IO[addr].ModbusOffset);
@@ -631,11 +655,11 @@ LDuino_engine::SWORD LDuino_engine::READ_INT(BYTE  addr)
 void LDuino_engine::WRITE_PWM(BYTE addr, SWORD value)
 {
 	if (Values[addr] == value) return;
-	analogWrite(IO[addr].pin, value);
+	if (IO_Polling) analogWrite(IO[addr].pin, value);
 	Values[addr] = value;
 }
 
 void LDuino_engine::READ_ADC(BYTE addr)
 {
-	Values[addr] = analogRead(IO[addr].pin);
+	if (IO_Polling) Values[addr] = analogRead(IO[addr].pin);
 }

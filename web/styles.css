@@ -107,6 +107,19 @@ table {
     font-weight: bold;
 }
 
+.LABEL[mapped=false] {
+    color: rgba(149, 149, 149, 0.610);
+    font-weight: lighter;
+}
+
+.TITLE {
+    font-weight: bold;
+    font-size: 20px;
+    padding-bottom: 6px;
+    font-family: Courier New;
+    text-align: center;
+}
+
 .col1 {
     font-weight: bold;
     text-align: right;
@@ -180,7 +193,7 @@ label.LED {
     line-height: 23.00px;
     font-family: "Comic Sans MS", cursive;
     font-style: normal;
-    font-weight: normal;
+    font-weight: bold;
     color: #000000;
     background-color: transparent;
     text-decoration: none;

@@ -52,14 +52,19 @@ public:
 	unsigned long GetTime() { return time; };
 	void PrintStats(Print & stream);
 	int GetType(int pin, signed short * value);
+	
 	void setPWM(int pin, signed short value);
-	void setDigital(int pin, signed short value);
+	void setAnalogInput(int pin, signed short value);
+	void toggleDigitalOutput(int pin);
+	void toggleDigitalInput(int pin);
+
 	void XML_DumpDigitalPins(xmlstring & str, int first, int last, int offset);
 	void XML_DumpAnalogPins(xmlstring & str, int first, int last, int offset);
 	void XML_State(Print & stream);
 	void SaveConfig();
 	bool getProgramReady(void) { return ProgramReady; };
 	void ToggleProgramRunning(void) { if (ProgramReady) ProgramRunning = !ProgramRunning; }
+	void ToggleIO_Polling(void) { IO_Polling = !IO_Polling; }
 
 private:
 	void LoadProgramLine(char *line);	
@@ -114,7 +119,8 @@ private:
 
 	boolean ProgramRunning;
 	boolean ProgramReady;
-	
+	boolean IO_Polling;	// true if physical I/O are polled, false for simulation mode
+
 	/*
 		$$IO
 		$$LDcode
@@ -126,7 +132,7 @@ private:
 
 	int pc;
 	unsigned long time;
-	int processing_time;
+	unsigned long processing_time;
 
 	char line[80];
 	char line_length;

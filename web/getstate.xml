@@ -1,9 +1,17 @@
 <?xml version = "1.0" ?>
 <state>
-<running>1</running><program_len>438</program_len><eeprom_len>4096</eeprom_len><opcodes>309</opcodes><io_nb>18</io_nb><internal_vars>12</internal_vars><cycle>10</cycle><processing>784</processing>
-<outputs>1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0</outputs>
-<relays>0:1,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0</relays>
-<inputs>1:0,2:0,3:0,4:1,5:0,6:0,7:0,8:0,9:1</inputs>
-<analog>0:1012</analog>
-<pwm>0:1013</pwm>
+  <running>1</running>
+  <io_polling>1</io_polling>
+  <program_len>680</program_len>
+  <eeprom_len>4096</eeprom_len>
+  <opcodes>506</opcodes>
+  <io_nb>27</io_nb>
+  <internal_vars>18</internal_vars>
+  <cycle>10</cycle>
+  <processing>1168</processing>
+  <outputs>0:0:0,1:0:0,2:1:1,3:0:0,4:0:0,5:0:0,6:0:0,7:0:0,8:0:0,9:0:0,10:0:0,11:0:0</outputs>
+  <relays>0:0:0,1:0:0,2:0:0,3:0:0,4:0:0,5:0:0,6:0:0,7:0:0,8:0:0,9:0:0</relays>
+  <inputs>0:1:1,1:0:0,2:0:0,3:0:0,4:0:0,5:0:0,6:0:0,7:0:0,8:0:0,9:0:0</inputs>
+  <analog></analog>
+  <pwm></pwm>
 </state>

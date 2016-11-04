@@ -22,8 +22,9 @@ function ToggleTrafficIndicator(a)
     else $("#traffic-indicator").addClass("paused");
 }
 
-function setLED(id, v) {
+function setLED(id, v, mapped) {
     $("#" + id + "_led").prop("checked", v ? true : false);
+    $("#" + id + "_label").attr("mapped", mapped ? true : false);
     $("#" + id + "_led").show();
     $("#" + id + "_led2").show();
     $("#" + id + "_lcd").hide();
@@ -71,18 +72,19 @@ function createIO(id)
     return html;
 }
 
-function createSubPanel(col, prefix, nb) {
+function createSubPanel(col, prefix, nb, title) {
     var html = "<table>";
+    html += "<tr><td colspan='4' class='TITLE'>" + title + "</td></tr>";
     for (i = 0; i < nb / 2; i++) {
         var id1 = prefix + i;
         var id2 = prefix + (i + nb / 2);
         if (id2 == "A10") id2 = "IN0";
         if (id2 == "A11") id2 = "IN1";
         html += "<tr>"
-        html += "<td class='LABEL' onclick='configPin(this)'>" + id1 + "</td>";
+        html += "<td><span class='LABEL' id='" + id1 + "_label' mapped='true' onclick='configPin(this)'>" + id1 + "</span></td>";
         html += createIO(id1);
         html += createIO(id2);
-        html += "<td class='LABEL' onclick='configPin(this)'>" + id2 + "</td>"
+        html += "<td><span class='LABEL' id='" + id2 + "_label' mapped='true' onclick='configPin(this)'>" + id2 + "</span></td>";
         html += "</tr>";
     }
     html += "</table>";
@@ -91,9 +93,9 @@ function createSubPanel(col, prefix, nb) {
 }
 
 function createPanel() {
-    createSubPanel(0, "A", 12);
-    createSubPanel(1, "D", 12);
-    createSubPanel(2, "R", 10);
+    createSubPanel(0, "A", 12, "Inputs");
+    createSubPanel(1, "D", 12, "Outputs");
+    createSubPanel(2, "R", 10, "Relays");
 }
 
 function init() {
@@ -116,6 +118,7 @@ function init() {
     resetLED('IN0');
     resetLED('IN1');
     resetLED('running');
+    resetLED('io_polling');
     setLCD("A0", 1001);
     GetArduinoIO();
 }
@@ -127,7 +130,7 @@ function updateLEDs(xml, tag, prefix) {
     var nb = plist.length;
     for (count = 0; count < nb; count++) {
         var x = plist[count].split(":");
-        setLED(prefix + x[0], x[1] > 0);
+        setLED(prefix + x[0], x[1] > 0, parseInt(x[2]));
     }
 }
 
@@ -173,7 +176,7 @@ function GetArduinoIO() {
                     var n = v[count].nodeName;
                     if (n == '#text') continue;
                     //if (n == strToggle) continue;
-                    if (n == "running") {
+                    if (n == "running" || n == "io_polling") {
                         setLED(n, (v[count].textContent == "1"));
                     }
                     else {

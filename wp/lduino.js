@@ -65,8 +65,9 @@ function IO(id)
     return html;
 }
 
-function createSubPanel(col, prefix, nb) {
+function createSubPanel(col, prefix, nb, title) {
     var html = "<table>";
+    html += "<tr><td colspan='4' class='LABEL'>" + title + "</td></tr>";
     for (i = 0; i < nb / 2; i++) {
         var id1 = prefix + i;
         var id2 = prefix + (i + nb / 2);
@@ -85,10 +86,9 @@ function createSubPanel(col, prefix, nb) {
 }
 
 function createPanel() {
-    p = $("#panel tr").children("td");
-    createSubPanel(0, "A", 12);
-    createSubPanel(1, "D", 12);
-    createSubPanel(2, "R", 10);
+    createSubPanel(0, "A", 12, "Inputs");
+    createSubPanel(1, "D", 12, "Outputs");
+    createSubPanel(2, "R", 10, "Relays");
 }
 
 function init() {

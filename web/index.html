@@ -32,10 +32,19 @@
                 <tbody>
                   <tr>
                     <td class="col1">Program:</td>
-                    <td class="col2"> <label class="switch switch-green"> <input
-                          id="running_led" class="switch-input" type="checkbox">
+                    <td class="col2">                        <label class="switch switch-green">                         <input id="running_led" class="switch-input" type="checkbox">
                         <span class="switch-label" data-on="On" data-off="Off"></span>
                         <span class="switch-handle"></span> </label> </td>
+                  </tr>
+                  <tr>
+                      <td class="col1">Physical I/O:</td>
+                      <td class="col2">
+                          <label class="switch switch-green">
+                          <input id="io_polling_led" class="switch-input" type="checkbox">
+                          <span class="switch-label" data-on="On" data-off="Off"></span>
+                          <span class="switch-handle"></span>
+                          </label>
+                      </td>
                   </tr>
                   <tr>
                     <td class="col1">Opcodes:</td>
@@ -81,7 +90,10 @@
             </td>
           </tr>
           <tr>
-            <td colspan="4"> <button id="reboot" onclick="reboot();" style="width: 100px; height: 22px;">Reboot</button>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td colspan="1"> <button id="reboot" onclick="reboot();" style="width: 100px; height: 22px;">Reboot</button>
               <button id="config" onclick="return popup('config.html');" style="width: 100px; height: 22px;">Config</button>
             </td>
           </tr>
