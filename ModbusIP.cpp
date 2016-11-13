@@ -5,12 +5,11 @@
 	Add support for RS485 relay (by Frederic RIBLE)
 */
 #include "ModbusIP.h"
+#include "ModbusRelay.h"
 
 ModbusIP::ModbusIP():_server(MODBUSIP_PORT) {
 	this->_slaveId= 1;
-	this->_SerialInProgress = false;
 	this->client = NULL;
-	this->ModbusTimeout_ms = 200;
 }
 
 void ModbusIP::config() {
@@ -42,25 +41,14 @@ void ModbusIP::config(uint8_t *mac, IPAddress ip, IPAddress dns, IPAddress gatew
     _server.begin();
 }
 
-void ModbusIP::configRelay(HardwareSerial* port, long baud, u_int format, void (*_switch_txrx)(txrx_mode)) {
-	this->_port = port;
-	port->begin(baud, format);
-	this->_switch_txrx = _switch_txrx;
-
-	if (baud > 19200) {
-		_t15 = 750;
-		_t35 = 1750;
-	} 
-	else {
-		_t15 = 15000000/baud; // 1T * 1.5 = T1.5
-		_t35 = 35000000/baud; // 1T * 3.5 = T3.5
-	}
+void ModbusIP::configRelay(HardwareSerial* port, long baud, u_int format, void (*_switch_txrx)(ModbusRelay::txrx_mode)) {
+	_relay.configRelay(port, baud, format, _switch_txrx);
 }
 
 void ModbusIP::task() 
 {
-	if (!_SerialInProgress) pollTCP();
-	else pollSerial();
+	pollTCP();
+	_relay.pollSerial();
 }
 
 void ModbusIP::pollTCP() 
@@ -108,11 +96,8 @@ void ModbusIP::pollTCP()
 					client.write(sendbuffer, _len + 7);
 				}
 			}
-			else {	// Relay over RS485 Serial line
-				TCP2Serial_Relay();
-				_timeoutTransaction = micros() + ModbusTimeout_ms * 1000L;
-				_timeoutFrame = 0;
-				_SerialInProgress = true;
+			else  {	// Relay over RS485 Serial line
+				_relay.TX(client, _MBAP, _frame, _len);
 			}
 #ifndef TCP_KEEP_ALIVE
             client.stop();
@@ -121,101 +106,6 @@ void ModbusIP::pollTCP()
             _len = 0;
         }
     }
-}
-
-void ModbusIP::pollSerial()
-{
-	if (micros() > _timeoutTransaction) {
-		_len = 0;
-		_SerialInProgress = false;
-		while (_port->available()) _port->read();
-		// Switch off receiver
-		_switch_txrx(off);
-		return;
-	}
-
-    if (_port->available() > _len)	{	// We have received new data
-	    _len = _port->available();
-		_timeoutFrame = micros() + _t35;
-    }
-	else if (_len > 0 && micros() > _timeoutFrame) {
-		//Serial.println(_len);
-		if (_len >= 3) {
-			byte i;
-			_MBAP[6] = _port->read();
-			_len--;
-			if (_MBAP[6] == 0 && _len > 0) {	// Remove random parasitic zero after remote switch TX on
-				_MBAP[6] = _port->read();
-				_len--;				
-			}
-			_frame = (byte*) malloc(_len);
-			for (i=0 ; i < _len ; i++) {
-				_frame[i] = _port->read();
-			}
-			if (client) Serial2TCP_Relay();
-			free(_frame);
-		}
-		while (_port->available()) _port->read();
-		_len = 0;	
-		_SerialInProgress = false;
-		// Switch off receiver
-		_switch_txrx(off);
-	}
-}
-
-bool ModbusIP::TCP2Serial_Relay() 
-{
-	// Switch to TX mode
-	_switch_txrx(tx);
-	
-	//Send slaveId
-	_port->write(_MBAP[6]);
-
-	//Send PDU
-	byte i;
-	for (i = 0 ; i < _len ; i++) {
-		_port->write(_frame[i]);
-	}
-
-	//Send CRC
-	word crc = calcCrc(_MBAP[6], _frame, _len);
-	_port->write(crc >> 8);
-	_port->write(crc & 0xFF);
-
-	_port->flush();
-	delayMicroseconds(_t35);
-
-	// Switch to RX mode
-	_switch_txrx(rx);
-}
-
-bool ModbusIP::Serial2TCP_Relay() 
-{
-	//Last two bytes = crc
-	u_int crc = ((_frame[_len - 2] << 8) | _frame[_len - 1]);
-
-	//CRC Check
-	if (crc != this->calcCrc(_MBAP[6], _frame, _len-2)) {
-		return false;
-	}
-
-	_len -= 2; // remove CRC
-	
-	//MBAP
-	_MBAP[4] = (_len+1) >> 8;     //_len+1 for last byte from MBAP
-	_MBAP[5] = (_len+1) & 0x00FF;
-	
-	byte sendbuffer[7 + _len];
-
-	for (int i = 0 ; i < 7 ; i++) {
-		sendbuffer[i] = _MBAP[i];
-	}
-	//PDU Frame
-	for (int i = 0 ; i < _len ; i++) {
-		sendbuffer[i+7] = _frame[i];
-	}
-	client.write(sendbuffer, _len + 7);
-	return true;
 }
 
 /* Table of CRC values for high–order byte */

@@ -385,6 +385,16 @@ int LDuino_engine::GetType(int pin, signed short *value)
 {
 	for (int addr = 0; addr < nbIO; addr++) {
 		if (IO[addr].pin == pin) {
+			if (!ProgramRunning && IO_Polling) {
+				switch (IO[addr].type) {
+				case XIO_TYPE_READ_ADC:
+					READ_ADC(addr);
+					break;
+				default:
+					READ_BIT(addr);
+					break;
+				}
+			}
 			*value = Values[addr];
 			return IO[addr].type;
 		}

@@ -36,7 +36,8 @@
 #include <EEPROM.h>
 
 #include "Modbus.h"
-#include "ModbusIP.h""
+#include "ModbusIP.h"
+#include "ModbusRelay.h"
 #include "plcweb.h"
 #include "lduino_engine.h"
 #include "Config.h"
@@ -50,14 +51,14 @@ IP_Config_t IP_Config;;
 bool doReset = false;
 
 #ifdef CONTROLLINO_MAXI
-void switch_txrx(ModbusIP::txrx_mode mode)
+void switch_txrx(ModbusRelay::txrx_mode mode)
 {
 	switch (mode) {
-	case ModbusIP::tx:
+	case ModbusRelay::tx:
 		Controllino_SwitchRS485DE(1);
 		Controllino_SwitchRS485RE(1);
 		break;
-	case ModbusIP::rx:
+	case ModbusRelay::rx:
 		Controllino_SwitchRS485DE(0);
 		Controllino_SwitchRS485RE(0);
 		break;
@@ -132,10 +133,16 @@ void loop() {
 	//lduino.Engine();
 	if (doReset) {
 		Serial << "Reset requested\n";
+		delay(500);
 		Timer1.stop();
 		noInterrupts();
+#ifdef CONTROLLINO_MAXI
+		pinMode(45, OUTPUT);
+		digitalWrite(45, 0);	// X2 connector bridge between pin 6 and 11
+#else
 		wdt_disable();
 		wdt_enable(WDTO_1S);
+#endif
 		doReset = false;
 	}
 }

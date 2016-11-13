@@ -59,6 +59,8 @@ extern "C" void __cxa_pure_virtual() {;}
 #include <Modbus.h>
 #include <ModbusIP.cpp>
 #include <ModbusIP.h>
+#include <ModbusRelay.cpp>
+#include <ModbusRelay.h>
 #include <ModbusSerial.cpp>
 #include <ModbusSerial.h>
 #include <TinyWebServer.cpp>
