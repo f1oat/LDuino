@@ -23,6 +23,7 @@ private:
 	byte  _len;
 	EthernetClient client;
 	byte _fc;	// Function code of on-going transaction
+	byte _rxid;	// Received slaveID
 
 	bool RX();
 

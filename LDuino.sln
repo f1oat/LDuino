@@ -1,0 +1,58 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LDuino", "LDuino.vcxproj", "{741C0DAA-3534-4AD7-9EDF-CFC4E58E98E7}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LDmicro", "..\LDmicro\ldmicro\VisualStudio\LDmicro.vcxproj", "{934C13CD-BFB1-4664-8431-C7A6804F5C0E}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ModbusSlaveSimu", "..\ModbusSlaveSimu\ModbusSlaveSimu.vcxproj", "{22083D63-7769-4E38-9EEE-453CEC4D6B52}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "streaming_example", "..\..\..\..\ARDUINO\Arduino\libraries\Streaming\Examples\streaming_example\streaming_example.vcxproj", "{4BB10303-4603-4D9B-9A05-75B5DDE89FC4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{741C0DAA-3534-4AD7-9EDF-CFC4E58E98E7}.Debug|x64.ActiveCfg = Debug|x64
+		{741C0DAA-3534-4AD7-9EDF-CFC4E58E98E7}.Debug|x64.Build.0 = Debug|x64
+		{741C0DAA-3534-4AD7-9EDF-CFC4E58E98E7}.Debug|x86.ActiveCfg = Debug|Win32
+		{741C0DAA-3534-4AD7-9EDF-CFC4E58E98E7}.Debug|x86.Build.0 = Debug|Win32
+		{741C0DAA-3534-4AD7-9EDF-CFC4E58E98E7}.Release|x64.ActiveCfg = Release|x64
+		{741C0DAA-3534-4AD7-9EDF-CFC4E58E98E7}.Release|x64.Build.0 = Release|x64
+		{741C0DAA-3534-4AD7-9EDF-CFC4E58E98E7}.Release|x86.ActiveCfg = Release|Win32
+		{741C0DAA-3534-4AD7-9EDF-CFC4E58E98E7}.Release|x86.Build.0 = Release|Win32
+		{934C13CD-BFB1-4664-8431-C7A6804F5C0E}.Debug|x64.ActiveCfg = Debug|x64
+		{934C13CD-BFB1-4664-8431-C7A6804F5C0E}.Debug|x64.Build.0 = Debug|x64
+		{934C13CD-BFB1-4664-8431-C7A6804F5C0E}.Debug|x86.ActiveCfg = Debug|Win32
+		{934C13CD-BFB1-4664-8431-C7A6804F5C0E}.Debug|x86.Build.0 = Debug|Win32
+		{934C13CD-BFB1-4664-8431-C7A6804F5C0E}.Release|x64.ActiveCfg = Release|x64
+		{934C13CD-BFB1-4664-8431-C7A6804F5C0E}.Release|x64.Build.0 = Release|x64
+		{934C13CD-BFB1-4664-8431-C7A6804F5C0E}.Release|x86.ActiveCfg = Release|Win32
+		{934C13CD-BFB1-4664-8431-C7A6804F5C0E}.Release|x86.Build.0 = Release|Win32
+		{22083D63-7769-4E38-9EEE-453CEC4D6B52}.Debug|x64.ActiveCfg = Debug|x64
+		{22083D63-7769-4E38-9EEE-453CEC4D6B52}.Debug|x64.Build.0 = Debug|x64
+		{22083D63-7769-4E38-9EEE-453CEC4D6B52}.Debug|x86.ActiveCfg = Debug|Win32
+		{22083D63-7769-4E38-9EEE-453CEC4D6B52}.Debug|x86.Build.0 = Debug|Win32
+		{22083D63-7769-4E38-9EEE-453CEC4D6B52}.Release|x64.ActiveCfg = Release|x64
+		{22083D63-7769-4E38-9EEE-453CEC4D6B52}.Release|x64.Build.0 = Release|x64
+		{22083D63-7769-4E38-9EEE-453CEC4D6B52}.Release|x86.ActiveCfg = Release|Win32
+		{22083D63-7769-4E38-9EEE-453CEC4D6B52}.Release|x86.Build.0 = Release|Win32
+		{4BB10303-4603-4D9B-9A05-75B5DDE89FC4}.Debug|x64.ActiveCfg = Debug|x64
+		{4BB10303-4603-4D9B-9A05-75B5DDE89FC4}.Debug|x64.Build.0 = Debug|x64
+		{4BB10303-4603-4D9B-9A05-75B5DDE89FC4}.Debug|x86.ActiveCfg = Debug|Win32
+		{4BB10303-4603-4D9B-9A05-75B5DDE89FC4}.Debug|x86.Build.0 = Debug|Win32
+		{4BB10303-4603-4D9B-9A05-75B5DDE89FC4}.Release|x64.ActiveCfg = Release|x64
+		{4BB10303-4603-4D9B-9A05-75B5DDE89FC4}.Release|x64.Build.0 = Release|x64
+		{4BB10303-4603-4D9B-9A05-75B5DDE89FC4}.Release|x86.ActiveCfg = Release|Win32
+		{4BB10303-4603-4D9B-9A05-75B5DDE89FC4}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

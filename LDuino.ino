@@ -22,6 +22,12 @@
 #include <avr/wdt.h>
 #include <TimerOne.h>
 
+//#define USE_RTOS 1
+
+#ifdef USE_RTOS
+#include <Arduino_FreeRTOS.h>
+#endif
+
 #define noPinDefs         // Disable default pin definitions (X0, X1, ..., Y0, Y1, ...)
 
 #include <SPI.h>
@@ -70,12 +76,52 @@ void switch_txrx(ModbusRelay::txrx_mode mode)
 }
 #endif
 
+int freeRam()
+{
+	extern int __heap_start, *__brkval;
+	int v;
+	return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
+}
+
+// Wipe RAM between heap and stack with 0x55 pattern
+
+void wipeRam()
+{
+	extern int __heap_start, *__brkval;
+	int v;
+	for (byte *ptr = (byte *)(__brkval == 0 ? &__heap_start : __brkval); ptr < (byte *)&v; ptr++) {
+		*ptr = 0x55;
+
+	}
+}
+
+// Measure stack usage
+
+int stackUsage()
+{
+	extern int __stack;
+	extern int __heap_start, *__brkval;
+	
+	short *heap_top = (short *)(__brkval == 0 ? &__heap_start : __brkval);
+	short *ptr = (short *)&__stack;
+ 	
+	int count = 0;
+	while (*ptr != 0x5555 && ptr >= heap_top) {
+		ptr--;
+		count += 2;
+	}
+
+	return count;
+}
+
 void setup_MODBUS()
 {
 	mb.config(); 	//Config Modbus IP
 #ifdef CONTROLLINO_MAXI
 	Controllino_RS485Init();
 	mb.configRelay(&Serial3, IP_Config.modbus_baudrate, SERIAL_8N1, switch_txrx);
+#else
+	mb.configRelay(&Serial3, IP_Config.modbus_baudrate, SERIAL_8N1, NULL);
 #endif
 	lduino.SetModbus(&mb);
 }
@@ -121,20 +167,76 @@ void setup() {
 	setup_MODBUS();
 	setup_PLC_Web();	// Web server init
 
+#ifndef USE_RTOS
 	Timer1.initialize(lduino.getCycleMS() * 1000L);
 	Timer1.attachInterrupt(pollPLC);
+#else
+	// Now set up two tasks to run independently.
 
+	xTaskCreate(
+		Task_Web_Modbus
+		, (const portCHAR *) "Web&Modbus"
+		, 512  // Stack size
+		, NULL
+		, 0  // Priority
+		, NULL);
+
+	//xTaskCreate(
+	//	Task_PLC
+	//	, (const portCHAR *)"PLC"   // A name just for humans
+	//	, 256  // This stack size can be checked & adjusted by reading the Stack Highwater
+	//	, NULL
+	//	, 2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+	//	, NULL);
+#endif
+
+	wipeRam();
+
+	extern int __stack;
+
+	Serial << F("freeRam ") << freeRam() << '\n';
+	Serial << F("__stack ") << (int)&__stack << '\n';
 	Serial << F("PLC ready\n");
 } 
 
+#ifdef USE_RTOS
+void Task_PLC(void *pvParameters)
+{
+	Serial << F("PLC task started\n");
+
+	for (;;) // A Task shall never return or exit.
+	{
+		pollPLC();
+		vTaskDelay(10 /*lduino.getCycleMS()*/ / portTICK_PERIOD_MS);
+	}
+}
+
+void Task_Web_Modbus(void *pvParameters)
+{
+	Serial << F("Web task started\n");
+
+	for (;;) // A Task shall never return or exit.
+	{
+		//mb.task();
+		poll_PLC_Web();
+		//vTaskDelay(100 / portTICK_PERIOD_MS);
+	}
+}
+#endif
+
 void loop() {
+#ifndef USE_RTOS
 	mb.task();
 	poll_PLC_Web();
+#endif
 	//lduino.Engine();
 	if (doReset) {
-		Serial << "Reset requested\n";
+		Serial << F("Stack usage ") << stackUsage() << '\n';
+		Serial << F("Reset requested\n");
 		delay(500);
+#ifndef USE_RTOS
 		Timer1.stop();
+#endif
 		noInterrupts();
 #ifdef CONTROLLINO_MAXI
 		pinMode(45, OUTPUT);

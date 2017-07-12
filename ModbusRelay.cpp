@@ -4,7 +4,7 @@ ModbusRelay::ModbusRelay()
 {
 	this->_SerialInProgress = false;
 	this->client = NULL;
-	this->ModbusTimeout_ms = 500;
+	this->ModbusTimeout_ms = 100;
 }
 
 void ModbusRelay::configRelay(HardwareSerial* port, long baud, u_int format, void(*_switch_txrx)(txrx_mode)) 
@@ -42,7 +42,7 @@ void ModbusRelay::pollSerial()
 		_SerialInProgress = false;
 		while (_port->available()) _port->read();
 		// Switch off receiver
-		_switch_txrx(off);
+		if (_switch_txrx) _switch_txrx(off);
 		return;
 	}
 
@@ -53,10 +53,10 @@ void ModbusRelay::pollSerial()
 	else if (_len > 1 && micros() > _timeoutFrame) {
 		if (_len >= 3) {
 			byte i;
-			_MBAP[6] = _port->read();
+			_rxid = _port->read();
 			_len--;
-			if (_MBAP[6] == 0 && _len > 0) {	// Remove random parasitic zero after remote switch TX on
-				_MBAP[6] = _port->read();
+			if (_rxid == 0 && _len > 0) {	// Remove random parasitic zero after remote switch TX on
+				_rxid = _port->read();
 				_len--;
 			}
 			_frame = (byte*)malloc(_len);
@@ -75,7 +75,7 @@ void ModbusRelay::pollSerial()
 		_len = 0;
 		_SerialInProgress = false;
 		// Switch off receiver
-		_switch_txrx(off);
+		if (_switch_txrx) _switch_txrx(off);
 	}
 }
 
@@ -83,7 +83,10 @@ void ModbusRelay::TX(EthernetClient client, byte MBAP[], byte *frame, byte  len)
 {
 	if (_SerialInProgress) return;	// We cannot have two transactions at the same time
 
-	//Serial.print("RS485 TX ");
+	Serial.print("RS485 TX ID=");
+	Serial.print(MBAP[6]);
+	Serial.print(" F=");
+	Serial.println(frame[0]);
 	//Serial.println(len);
 
 	memcpy(_MBAP, MBAP, 7);
@@ -93,7 +96,7 @@ void ModbusRelay::TX(EthernetClient client, byte MBAP[], byte *frame, byte  len)
 	this->_fc = frame[0];
 
 	// Switch to TX mode
-		_switch_txrx(tx);;
+	if (_switch_txrx) _switch_txrx(tx);;
 
 	//Send slaveId
 	_port->write(MBAP[6]);
@@ -110,10 +113,10 @@ void ModbusRelay::TX(EthernetClient client, byte MBAP[], byte *frame, byte  len)
 	_port->write(crc & 0xFF);
 
 	_port->flush();
-	delayMicroseconds(_t35);
+	//delayMicroseconds(_t35);
 
 	// Switch to RX mode
-	_switch_txrx(rx);
+	if (_switch_txrx) _switch_txrx(rx);
 
 	_len = 0;
 	_timeoutTransaction = micros() + ModbusTimeout_ms * 1000L;
@@ -123,21 +126,27 @@ void ModbusRelay::TX(EthernetClient client, byte MBAP[], byte *frame, byte  len)
 
 bool ModbusRelay::RX()
 {
-	//Serial.print(F("RS485 RX "));
-	//Serial.println(_len);
+	Serial.print(F("RS485 RX "));
+	Serial.println(_len);
 
 	//Last two bytes = crc
 	u_int crc = ((_frame[_len - 2] << 8) | _frame[_len - 1]);
 
 	//CRC Check
-	if (crc != calcCrc(_MBAP[6], _frame, _len - 2)) {
-		Serial.println(F("RS485: CRC error"));
+	if (crc != calcCrc(_rxid, _frame, _len - 2)) {
+		Serial.print(F("*** RS485: CRC error "));
+		for (byte i=0; i<_len; i++) {
+			Serial.print(_frame[i]);
+			Serial.print(' ');
+		}
+		Serial.print('\n');
 		// Report exception "slave device failure"
 		_frame[0] = _fc | 0x80;
 		_frame[1] = 0x04;
 		_len = 2;
 	}
 	else {
+		_MBAP[6] = _rxid;
 		_len -= 2; // remove CRC
 	}
 

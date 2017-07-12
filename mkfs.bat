@@ -1,2 +1,2 @@
-python tools/makefsdata.py
+python3 tools/makefsdata.py
 pause

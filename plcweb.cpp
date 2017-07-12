@@ -195,7 +195,6 @@ static void file_uploader_handler(TinyWebServer& web_server, TinyWebPutHandler::
 		boundary_len = strlen(boundary);
 		D(Serial.print("**** Upload file "));
 		D(Serial.println(fname));
-		free(fname);
 		st = search_begin;
 		file_size = 0;
 		break;
