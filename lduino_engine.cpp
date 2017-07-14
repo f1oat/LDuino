@@ -17,6 +17,7 @@
 
 #include "Config.h"
 #include "lduino_engine.h"
+#include "sysinfo.h"
 
 #define INT_SET_BIT                              1
 #define INT_CLEAR_BIT                            2
@@ -490,7 +491,7 @@ void LDuino_engine::XML_DumpAnalogPins(xmlstring &str, int first, int last, int 
 void LDuino_engine::XML_State(Print & stream)
 {
 	xmlstring str;
-
+	
 	str += F("<?xml version = \"1.0\" ?>\n");
 	str += F("<state>\n");
 	str.catTag(F("running"), ProgramRunning);
@@ -502,6 +503,7 @@ void LDuino_engine::XML_State(Print & stream)
 	str.catTag(F("internal_vars"), total_nbIO - nbIO);
 	str.catTag(F("cycle"), cycle_ms);
 	str.catTag(F("processing"), processing_time);
+	str.catTag(F("unusedRam"), sysinfo::unusedRam());
 
 #if 0
 	buf += F("<vars>\n");
@@ -513,7 +515,7 @@ void LDuino_engine::XML_State(Print & stream)
 	buf += F("</vars>\n");
 #endif
 
-	str += F("<outputs>");
+	str += F("\n<outputs>");
 	XML_DumpDigitalPins(str, 0, 11, 2);
 	str += F("</outputs>\n");
 
@@ -528,7 +530,7 @@ void LDuino_engine::XML_State(Print & stream)
 	str += F("<analog>");
 	XML_DumpAnalogPins(str, 0, 9, 54);
 	str += F("</analog>\n");
-	
+
 	str += F("<pwm>");
 	XML_DumpAnalogPins(str, 0, 9, 2);
 	str += F("</pwm>\n");
