@@ -45,15 +45,16 @@ void ModbusIP::configRelay(HardwareSerial* port, long baud, u_int format, void (
 	_relay.configRelay(port, baud, format, _switch_txrx);
 }
 
-void ModbusIP::task() 
+void ModbusIP::pollSerial() 
 {
-	pollTCP();
 	_relay.pollSerial();
 }
 
 void ModbusIP::pollTCP() 
 {
-    client = _server.available();
+	_relay.pollTCP();
+
+	client = _server.available();
 
     if (client) {
         if (client.connected()) {

@@ -67,7 +67,8 @@ public:
 	void ToggleIO_Polling(void) { IO_Polling = !IO_Polling; }
 
 	short getCycleMS() { return cycle_ms; }
-
+	void setStatus(String status) { _status = status; }
+	String getStatus(void) { return _status; }
 private:
 	void LoadProgramLine(char *line);	
 	void ConfigureModbus(void);
@@ -138,6 +139,8 @@ private:
 
 	char line[80];
 	char line_length;
+	
+	String _status;
 };
 
 

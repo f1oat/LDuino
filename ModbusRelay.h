@@ -21,12 +21,17 @@ private:
 	byte _MBAP[7];
 	byte *_frame;
 	byte  _len;
+	byte _tcp_len;
 	EthernetClient client;
 	byte _fc;	// Function code of on-going transaction
 	byte _rxid;	// Received slaveID
 
 	bool RX();
 
+	short stats_transaction;
+	short stats_crc_error;
+	short stats_timeout;
+	short stats_short_frame;
 public:
 	
 	ModbusRelay();
@@ -34,6 +39,9 @@ public:
 	void(*_switch_txrx)(txrx_mode);
 	
 	void configRelay(HardwareSerial * port, long baud, u_int format, void(*_switch_txrx)(txrx_mode));
-	void pollSerial();
 	void TX(EthernetClient client, byte MBAP[], byte * frame, byte len);
+	bool pollSerial();
+	void pollTCP();
+
+	String DumpStats();
 };

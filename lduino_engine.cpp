@@ -52,6 +52,7 @@ LDuino_engine::LDuino_engine()
 	ClearProgram();
 	EEPROM_ProgramLen = 0;
 	LoadConfig();
+	_status = "Booting";
 }
 
 void LDuino_engine::SetModbus(Modbus * mb)
@@ -504,6 +505,7 @@ void LDuino_engine::XML_State(Print & stream)
 	str.catTag(F("cycle"), cycle_ms);
 	str.catTag(F("processing"), processing_time);
 	str.catTag(F("unusedRam"), sysinfo::unusedRam());
+	str.catTag(F("_status"), _status);
 
 #if 0
 	buf += F("<vars>\n");

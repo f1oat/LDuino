@@ -199,7 +199,7 @@ function GetArduinoIO() {
     request.send(null);
 
     statusOK = false;
-    setTimeout('GetArduinoIO()', 1000);
+    setTimeout('GetArduinoIO()', 500);
     strToggle = "";
     strSetPWM = "";
 }

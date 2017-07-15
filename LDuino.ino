@@ -22,7 +22,9 @@
 #include <avr/wdt.h>
 #include <TimerOne.h>
 
-//#define USE_RTOS 1
+#include "global.h"
+
+#define USE_RTOS 1
 
 #ifdef USE_RTOS
 #include <Arduino_FreeRTOS.h>
@@ -47,6 +49,7 @@
 #include "plcweb.h"
 #include "lduino_engine.h"
 #include "Config.h"
+#include "sysinfo.h"
 
 //ModbusIP object
 ModbusIP mb;
@@ -76,44 +79,6 @@ void switch_txrx(ModbusRelay::txrx_mode mode)
 }
 #endif
 
-int freeRam()
-{
-	extern int __heap_start, *__brkval;
-	int v;
-	return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
-}
-
-// Wipe RAM between heap and stack with 0x55 pattern
-
-void wipeRam()
-{
-	extern int __heap_start, *__brkval;
-	int v;
-	for (byte *ptr = (byte *)(__brkval == 0 ? &__heap_start : __brkval); ptr < (byte *)&v; ptr++) {
-		*ptr = 0x55;
-
-	}
-}
-
-// Measure stack usage
-
-int stackUsage()
-{
-	extern int __stack;
-	extern int __heap_start, *__brkval;
-	
-	short *heap_top = (short *)(__brkval == 0 ? &__heap_start : __brkval);
-	short *ptr = (short *)&__stack;
- 	
-	int count = 0;
-	while (*ptr != 0x5555 && ptr >= heap_top) {
-		ptr--;
-		count += 2;
-	}
-
-	return count;
-}
-
 void setup_MODBUS()
 {
 	mb.config(); 	//Config Modbus IP
@@ -132,7 +97,19 @@ void pollPLC()
 	lduino.Engine();
 }
 
+extern  void(*_malloc_exception)(size_t);
+
+void malloc_exception(size_t len)
+{
+	Serial.print(F("*** malloc error len="));
+	Serial.println(len);
+}
+
 void setup() {
+	_malloc_exception = malloc_exception;
+	__malloc_heap_end = (char*)RAMEND;
+	sysinfo::wipeRam();
+
 	Serial.begin(115200);
 	Serial << F("Setup\n");
 
@@ -165,38 +142,38 @@ void setup() {
 
 	customIO();			// Setup inputs and outputs for Controllino PLC
 	setup_MODBUS();
-	setup_PLC_Web();	// Web server init
 
 #ifndef USE_RTOS
 	Timer1.initialize(lduino.getCycleMS() * 1000L);
 	Timer1.attachInterrupt(pollPLC);
 #else
-	// Now set up two tasks to run independently.
-
 	xTaskCreate(
-		Task_Web_Modbus
-		, (const portCHAR *) "Web&Modbus"
-		, 512  // Stack size
+		Task_Net
+		, (const portCHAR *) "Net"
+		, 600  // Stack size
 		, NULL
 		, 0  // Priority
 		, NULL);
 
-	//xTaskCreate(
-	//	Task_PLC
-	//	, (const portCHAR *)"PLC"   // A name just for humans
-	//	, 256  // This stack size can be checked & adjusted by reading the Stack Highwater
-	//	, NULL
-	//	, 2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-	//	, NULL);
+	xTaskCreate(
+		Task_Modbus
+		, (const portCHAR *) "Modbus"
+		, 256  // Stack size
+		, NULL
+		, 2  // Priority
+		, NULL);
+
+	xTaskCreate(
+		Task_PLC
+		, (const portCHAR *)"PLC"
+		, 128
+		, NULL
+		, 1 
+		, NULL);
 #endif
-
-	wipeRam();
-
-	extern int __stack;
-
-	Serial << F("freeRam ") << freeRam() << '\n';
-	Serial << F("__stack ") << (int)&__stack << '\n';
+	Serial << F("unusedRam ") << sysinfo::unusedRam() << '\n';
 	Serial << F("PLC ready\n");
+	lduino.setStatus(F("Ready"));
 } 
 
 #ifdef USE_RTOS
@@ -207,31 +184,52 @@ void Task_PLC(void *pvParameters)
 	for (;;) // A Task shall never return or exit.
 	{
 		pollPLC();
-		vTaskDelay(10 /*lduino.getCycleMS()*/ / portTICK_PERIOD_MS);
+		vTaskDelay(1);
 	}
 }
 
-void Task_Web_Modbus(void *pvParameters)
+void Task_Modbus(void *pvParameters)
 {
-	Serial << F("Web task started\n");
+	Serial << F("Modbus task started\n");
 
 	for (;;) // A Task shall never return or exit.
 	{
-		//mb.task();
-		poll_PLC_Web();
-		//vTaskDelay(100 / portTICK_PERIOD_MS);
+		mb.pollSerial();
+		vTaskDelay(1); // 100 / portTICK_PERIOD_MS;
 	}
+}
+
+void Task_Net(void *pvParameters)
+{
+	Serial << F("Task Net started\n");
+
+	setup_PLC_Web();	// Web server init
+
+	for (;;) // A Task shall never return or exit.
+	{
+		mb.pollTCP();
+		poll_PLC_Web();
+		vTaskDelay(1); // 100 / portTICK_PERIOD_MS;
+	}
+}
+
+void vApplicationMallocFailedHook(void)
+{
+	Serial.println(F("*** vmalloc error"));
 }
 #endif
 
 void loop() {
 #ifndef USE_RTOS
-	mb.task();
+	mb.pollTCP();
+	mb.pollSerial();
 	poll_PLC_Web();
 #endif
+
+
 	//lduino.Engine();
 	if (doReset) {
-		Serial << F("Stack usage ") << stackUsage() << '\n';
+		Serial << F("Stack usage ") << sysinfo::stackUsage() << '\n';
 		Serial << F("Reset requested\n");
 		delay(500);
 #ifndef USE_RTOS

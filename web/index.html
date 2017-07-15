@@ -12,12 +12,12 @@
     <link rel="stylesheet" type="text/css" href="animated_status.css">
     <link rel="stylesheet" type="text/css" href="range.css">
   </head>
-  <body onload="init()" style="height:332px;background:#ffffff;">
+  <body onload="init()" style="     height:332px;background:#ffffff;">
     <div id="divMain" style="background:transparent;margin-left:auto;margin-right:auto;position:relative;width:753px;height:332px;">
       <table id="gtbl">
         <tbody>
           <tr>
-            <td colspan="4"> <span class="C-1"> LDuino -<wbr> © 2016 Frederic
+            <td colspan="4"> <span class="C-1"> LDuino -<wbr> © 2017 Frederic
                 RIBLE (frible@teaser.fr) </span> </td>
           </tr>
           <tr>
@@ -32,52 +32,71 @@
                 <tbody>
                   <tr>
                     <td class="col1">Program:</td>
-                    <td class="col2">                        <label class="switch switch-green">                         <input id="running_led" class="switch-input" type="checkbox">
+                    <td class="col2"> <label class="switch switch-green"> <input
+
+                          id="running_led" class="switch-input" type="checkbox">
                         <span class="switch-label" data-on="On" data-off="Off"></span>
                         <span class="switch-handle"></span> </label> </td>
                   </tr>
                   <tr>
-                      <td class="col1">Physical I/O:</td>
-                      <td class="col2">
-                          <label class="switch switch-green">
-                          <input id="io_polling_led" class="switch-input" type="checkbox">
-                          <span class="switch-label" data-on="On" data-off="Off"></span>
-                          <span class="switch-handle"></span>
-                          </label>
-                      </td>
+                    <td class="col1">Physical I/O:</td>
+                    <td class="col2"> <label class="switch switch-green"> <input
+
+                          id="io_polling_led" class="switch-input" type="checkbox">
+                        <span class="switch-label" data-on="On" data-off="Off"></span>
+                        <span class="switch-handle"></span> </label> </td>
                   </tr>
                   <tr>
                     <td class="col1">Opcodes:</td>
-                    <td class="col2"> <output id="opcodes" class="STATUS" maxlength="32"
+                    <td class="col2"> <output id="opcodes" class="STATUS" maxlength="32"
+
                         readonly="readonly" value="----"></output> </td>
                   </tr>
                   <tr>
                     <td class="col1">EEPROM:</td>
-                    <td class="col2"> <output id="program_len" class="STATUS" maxlength="32"
-                        readonly="readonly" value="----"></output> / <output id="eeprom_len"
+                    <td class="col2"> <output id="program_len" class="STATUS" maxlength="32"
+
+                        readonly="readonly" value="----"></output> / <output id="eeprom_len"
+
                         class="STATUS" maxlength="32" readonly="readonly" value="----"></output>
                     </td>
                   </tr>
                   <tr>
                     <td class="col1">I/O vars:</td>
-                    <td class="col2"> <output id="io_nb" class="STATUS" maxlength="32"
+                    <td class="col2"> <output id="io_nb" class="STATUS" maxlength="32"
+
                         readonly="readonly" value="----"></output> </td>
                   </tr>
                   <tr>
                     <td class="col1">Internal vars:</td>
-                    <td class="col2"> <output id="internal_vars" class="STATUS"
+                    <td class="col2"> <output id="internal_vars" class="STATUS"
+
                         maxlength="32" readonly="readonly" value="----"></output>
                     </td>
                   </tr>
                   <tr>
                     <td class="col1">Cycle:</td>
-                    <td class="col2"> <output id="cycle" class="STATUS" maxlength="32"
+                    <td class="col2"> <output id="cycle" class="STATUS" maxlength="32"
+
                         readonly="readonly" value="----"></output> ms </td>
                   </tr>
                   <tr>
                     <td class="col1">Processing time:</td>
-                    <td class="col2"> <output id="processing" class="STATUS" maxlength="32"
+                    <td class="col2"> <output id="processing" class="STATUS" maxlength="32"
+
                         readonly="readonly" value="----"></output> µs </td>
+                  </tr>
+                  <tr>
+                    <td class="col1">Free Ram:</td>
+                    <td class="col2"><output id="unusedRam" class="STATUS" maxlength="32"
+
+                        readonly="readonly" value="----"></output> </td>
+                  </tr>
+                  <tr>
+                    <td class="col1">Status:</td>
+                    <td class="col2"><output id="_status" class="STATUS" maxlength="32"
+
+                        readonly="readonly" value="----"></output> </td>
                   </tr>
                   <tr>
                     <td class="col1">Refreshing:</td>
@@ -90,9 +109,12 @@
             </td>
           </tr>
           <tr>
-            <td></td>
-            <td></td>
-            <td></td>
+            <td><br>
+            </td>
+            <td><br>
+            </td>
+            <td><br>
+            </td>
             <td colspan="1"> <button id="reboot" onclick="reboot();" style="width: 100px; height: 22px;">Reboot</button>
               <button id="config" onclick="return popup('config.html');" style="width: 100px; height: 22px;">Config</button>
             </td>
@@ -106,12 +128,14 @@
         <table>
           <tbody>
             <tr>
-              <td> <input id="pwm_range" min="0" max="1023" oninput="pwm_value.value = this.value"
+              <td> <input id="pwm_range" min="0" max="1023" oninput="pwm_value.value = this.value"
+
                   type="range"> </td>
               <td> <output id="pwm_value">24</output> </td>
             </tr>
             <tr>
-              <td colspan="2"> <button id="pwm_ok">OK</button> <button id="pwm_cancel"
+              <td colspan="2"> <button id="pwm_ok">OK</button> <button id="pwm_cancel"
+
                   onclick="setPWM_modal.style.display = 'none'">Cancel</button>
               </td>
             </tr>
@@ -119,5 +143,6 @@
         </table>
       </div>
     </div>
+    
   </body>
 </html>

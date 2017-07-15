@@ -1,10 +1,32 @@
 #include "ModbusRelay.h"
+#include <Flash.h>
+#include <Streaming.h>
 
 ModbusRelay::ModbusRelay() 
 {
-	this->_SerialInProgress = false;
-	this->client = NULL;
-	this->ModbusTimeout_ms = 100;
+	_SerialInProgress = false;
+	client = NULL;
+	ModbusTimeout_ms = 100;
+	stats_crc_error = 0;
+	stats_timeout = 0;
+	stats_transaction = 0;
+	stats_short_frame = 0;
+	_tcp_len = 0;
+}
+
+String ModbusRelay::DumpStats()
+{
+	String str;
+	str += F("[Transactions=");
+	str += stats_transaction;
+	str += F(" crc=");
+	str += stats_crc_error;
+	str += F(" timeouts=");
+	str += stats_timeout;
+	str += F(" short=");
+	str += stats_short_frame;
+	str += ']';
+	return str;
 }
 
 void ModbusRelay::configRelay(HardwareSerial* port, long baud, u_int format, void(*_switch_txrx)(txrx_mode)) 
@@ -27,23 +49,19 @@ void ModbusRelay::configRelay(HardwareSerial* port, long baud, u_int format, voi
 	Serial.println(_t35);
 }
 
-void ModbusRelay::pollSerial()
+bool ModbusRelay::pollSerial()
 {
-	if (!_SerialInProgress) return;
+	if (!_SerialInProgress) return false;
 
 	if (micros() > _timeoutTransaction) {
-		Serial.print(F("RS485: timeout "));
-		Serial.println(_port->available());
-		Serial.println(_len);
-		Serial.println(_timeoutFrame);
-		Serial.println(_timeoutTransaction);
-		Serial.println(micros());
+		stats_timeout++;
+		Serial << F("*** RS485: timeout available=") << _port->available() << F(" _len=") << _len << ' ' << DumpStats() << '\n';
 		_len = 0;
 		_SerialInProgress = false;
 		while (_port->available()) _port->read();
 		// Switch off receiver
 		if (_switch_txrx) _switch_txrx(off);
-		return;
+		return false;
 	}
 
 	if (_port->available() > _len) {	// We have received new data
@@ -59,17 +77,15 @@ void ModbusRelay::pollSerial()
 				_rxid = _port->read();
 				_len--;
 			}
-			_frame = (byte*)malloc(_len);
+			_frame = (byte*)malloc(7+_len);	// Add 7 byte for future NBAP header
 			for (i = 0; i < _len; i++) {
-				_frame[i] = _port->read();
+				_frame[7+i] = _port->read();
 			}
-
-			if (client) RX();
-			free(_frame);
+			RX();
 		}
 		else {
-			Serial.print(F("RS485: short frame "));
-			Serial.println(_len);
+			stats_short_frame++;
+			Serial << F("*** RS485: short frame ") << _len << ' '  << DumpStats() << '\n';
 		}
 		while (_port->available()) _port->read();
 		_len = 0;
@@ -77,16 +93,18 @@ void ModbusRelay::pollSerial()
 		// Switch off receiver
 		if (_switch_txrx) _switch_txrx(off);
 	}
+
+	return _SerialInProgress;
 }
 
 void ModbusRelay::TX(EthernetClient client, byte MBAP[], byte *frame, byte  len)
 {
 	if (_SerialInProgress) return;	// We cannot have two transactions at the same time
 
-	Serial.print("RS485 TX ID=");
-	Serial.print(MBAP[6]);
-	Serial.print(" F=");
-	Serial.println(frame[0]);
+	//Serial.print("RS485 TX ID=");
+	//Serial.print(MBAP[6]);
+	//Serial.print(" F=");
+	//Serial.println(frame[0]);
 	//Serial.println(len);
 
 	memcpy(_MBAP, MBAP, 7);
@@ -122,27 +140,29 @@ void ModbusRelay::TX(EthernetClient client, byte MBAP[], byte *frame, byte  len)
 	_timeoutTransaction = micros() + ModbusTimeout_ms * 1000L;
 	_timeoutFrame = 0;
 	_SerialInProgress = true;
+	stats_transaction++;
 }
 
 bool ModbusRelay::RX()
 {
-	Serial.print(F("RS485 RX "));
-	Serial.println(_len);
+	//Serial.print(F("RS485 RX "));
+	//Serial.println(_len);
 
 	//Last two bytes = crc
-	u_int crc = ((_frame[_len - 2] << 8) | _frame[_len - 1]);
+	u_int crc = ((_frame[7+_len - 2] << 8) | _frame[7+_len - 1]);
 
 	//CRC Check
-	if (crc != calcCrc(_rxid, _frame, _len - 2)) {
+	if (crc != calcCrc(_rxid, _frame+7, _len - 2)) {
+		stats_crc_error++;
 		Serial.print(F("*** RS485: CRC error "));
 		for (byte i=0; i<_len; i++) {
-			Serial.print(_frame[i]);
+			Serial.print(_frame[7+i]);
 			Serial.print(' ');
 		}
-		Serial.print('\n');
+		Serial << ' ' << DumpStats() << '\n';
 		// Report exception "slave device failure"
-		_frame[0] = _fc | 0x80;
-		_frame[1] = 0x04;
+		_frame[7] = _fc | 0x80;
+		_frame[8] = 0x04;
 		_len = 2;
 	}
 	else {
@@ -154,16 +174,19 @@ bool ModbusRelay::RX()
 	_MBAP[4] = (_len + 1) >> 8;     //_len+1 for last byte from MBAP
 	_MBAP[5] = (_len + 1) & 0x00FF;
 
-	byte sendbuffer[7 + _len];
-
 	for (int i = 0; i < 7; i++) {
-		sendbuffer[i] = _MBAP[i];
+		_frame[i] = _MBAP[i];
 	}
-	//PDU Frame
-	for (int i = 0; i < _len; i++) {
-		sendbuffer[i + 7] = _frame[i];
-	}
-	client.write(sendbuffer, _len + 7);
+	_tcp_len = _len + 7;	// Signal we have some tcp data to transfer
 	return true;
 }
 
+void ModbusRelay::pollTCP()
+{
+	if (!_tcp_len) return;
+	if (client) {
+		client.write(_frame, _tcp_len);
+	}
+	free(_frame);
+	_tcp_len = 0;
+}

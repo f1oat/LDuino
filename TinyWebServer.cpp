@@ -95,8 +95,8 @@ boolean TinyWebServer::process_headers()
 	// First clear the header values from the previous HTTP request.
 	for (int i = 0; headers_[i].header; i++) {
 		if (headers_[i].value) {
-			// Ensure the pointer is cleared once the memory is freed.
-			headers_[i].value[0] = 0;
+			free(headers_[i].value);
+			headers_[i].value = NULL;
 		}
 	}
 
@@ -224,7 +224,7 @@ boolean TinyWebServer::process_headers()
 }
 
 void TinyWebServer::process() {
-	client_ = server_.available();
+	client_ = server_.available();	
 	if (!client_.connected() || !client_.available()) {
 		return;
 	}
@@ -260,7 +260,7 @@ void TinyWebServer::process() {
 		request_type_ = DELETE;
 	}
 
-	strncpy(path_, strtok_r(NULL, " \t", &saveptr), sizeof(path_));
+	strncpy(path_, strtok_r(NULL, " \t", &saveptr), sizeof(path_)-1);
 
 #if DEBUG
 	Serial << "HTTP " << request_type_str << '[' << request_type_ <<  ']' << path_ << ":\n";
@@ -317,11 +317,12 @@ boolean TinyWebServer::is_requested_header(const char** header) {
 
 boolean TinyWebServer::assign_header_value(const char* header, char* value) {
 	boolean found = false;
+
 	for (int i = 0; headers_[i].header; i++) {
 		// Use pointer equality, since `header' must be the pointer
 		// inside headers_.
 		if (header == headers_[i].header) {
-			strncpy(headers_[i].value, value, sizeof(headers_[i].value));
+			headers_[i].value = strdup(value);
 			found = true;
 			break;
 		}
@@ -359,6 +360,10 @@ void TinyWebServer::send_content_type(MimeType mime_type) {
 void TinyWebServer::send_content_type(const char* content_type) {
 	client_ << content_type_msg;
 	client_.println(content_type);
+}
+
+void TinyWebServer::send_last_modified(const char *date) {
+	client_ << F("Last-Modified: ") << date << '\n';
 }
 
 char* TinyWebServer::get_path() { return path_; }

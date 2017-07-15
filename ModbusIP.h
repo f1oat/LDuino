@@ -34,7 +34,8 @@ class ModbusIP : public Modbus {
 		void config(uint8_t *mac, IPAddress ip, IPAddress dns, IPAddress gateway);
 		void config(uint8_t *mac, IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnet);
 		void configRelay(HardwareSerial* port, long baud, u_int format, void (*_switch_txrx)(ModbusRelay::txrx_mode));
-		void task();
+		void pollTCP();
+		void pollSerial();
     private:
         EthernetServer _server;
         byte _MBAP[7];
@@ -44,7 +45,6 @@ class ModbusIP : public Modbus {
 		byte  _slaveId;; // Modbus address locally managed
 		word calcCrc(byte address, byte* pduframe, byte pdulen);
 		 
-		void pollTCP();
 		ModbusRelay _relay;
 	};
 

@@ -90,6 +90,7 @@ public:
 
   void send_content_type(MimeType mime_type);
   void send_content_type(const char* content_type);
+  void send_last_modified(const char *date);
 
   // Call this method to indicate the end of the headers.
   inline void end_headers() { client_.println(); }
@@ -162,11 +163,11 @@ private:
 
   typedef struct {
     const char* header;
-    char value[16];
+    char *value;
   } HeaderValue;
 
   // The headers
-  static const int MAX_HEADERS = 16;
+  static const int MAX_HEADERS = 8;
   HeaderValue headers_[MAX_HEADERS];
 
   // The TCP/IP server we use.

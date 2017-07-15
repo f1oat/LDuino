@@ -160,7 +160,7 @@ input[type=checkbox].LED:checked + label.LED {
 }
 
 label.LED {
-    background-image: url(http://csscheckbox.com/checkboxes/u/csscheckbox_d812d378e2fbf8a8c23c16391a1986f6.png);
+    background-image: url('led.png');
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;

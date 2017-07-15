@@ -50,6 +50,8 @@
 #define XATOMIC_BLOCK(type) type, __ToDo; for (__ToDo = __iCliRetVal(); \
 	                       __ToDo ; __ToDo = 0 )
 
+void (*_malloc_exception)(size_t) = NULL;
+
 /*
  * Exported interface:
  *
@@ -187,6 +189,7 @@ _malloc(size_t len) {
         /*
          * Step 4: There's no help, just fail. :-/
          */
+		if (_malloc_exception) _malloc_exception(len);
         return NULL;
 }
 
@@ -292,9 +295,11 @@ _realloc(void *ptr, size_t len) {
         fp1 = (struct __freelist *) cp1;
 
         cp = (char *) ptr + len; /* new next pointer */
-        if(cp < cp1)
-                /* Pointer wrapped across top of RAM, fail. */
-                return NULL;
+		if (cp < cp1) {
+			/* Pointer wrapped across top of RAM, fail. */
+			if (_malloc_exception) _malloc_exception(len);
+			return NULL;
+		}
 
         /*
          * See whether we are growing or shrinking.  When shrinking,
@@ -371,6 +376,7 @@ _realloc(void *ptr, size_t len) {
                         return ptr;
                 }
                 /* If that failed, we are out of luck. */
+				if (_malloc_exception) _malloc_exception(len);
                 return NULL;
         }
 

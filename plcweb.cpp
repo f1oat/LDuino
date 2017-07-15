@@ -85,6 +85,7 @@ static TinyWebServer::PathHandler handlers[] = {
 static const char* headers[] = {
 	"Content-Length",
 	"Content-Type",
+	"If-Modified-Since",
 	NULL
 };
 
@@ -138,6 +139,7 @@ static boolean file_handler(TinyWebServer& web_server)
 
 	if (find_file(path, &segment, &len, &use_gzip)) {
 		web_server.send_error_code(200);
+		web_server.send_last_modified("Wed, 21 Oct 2015 07:28:00 GMT");
 		web_server.send_content_type(web_server.get_mime_type_from_filename(path));
 		if (use_gzip) web_server.write("Content-Encoding: gzip\n");
 		web_server.end_headers(); 
@@ -175,18 +177,24 @@ static void file_uploader_handler(TinyWebServer& web_server, TinyWebPutHandler::
 	static char *boundary = NULL;
 	static size_t boundary_len = 0;
 	static CircularBuffer<char, 128> cb;
-	static enum state { search_begin=0, search_data, in_data} st;
+	static enum state { search_begin=0, search_data, search_filename, in_filename, in_data} st;
 	static int file_size = 0;
-	static char *fname;
-	
+	static String fname = "";
+	const char *ct;
+
 	switch (action) {
 	case TinyWebPutHandler::START: 
 	{
-		fname = web_server.get_file_from_path(web_server.get_path());
-		const char *ct = web_server.get_header_value("Content-Type");
-		if (!ct) break;
+		ct = web_server.get_header_value("Content-Type");
+		if (!ct) {
+			Serial << F("Missing Content-Type\n");
+			break;
+		}
 		boundary = strstr(ct, "boundary=");
-		if (!boundary) break;
+		if (!boundary) {
+			Serial << F("Missing boundary= in '") << ct << "'\n";
+			break;
+		}
 		boundary += 5;
 		boundary[0] = '\r';
 		boundary[1] = '\n';
@@ -197,26 +205,55 @@ static void file_uploader_handler(TinyWebServer& web_server, TinyWebPutHandler::
 		D(Serial.println(fname));
 		st = search_begin;
 		file_size = 0;
+		lduino.setStatus(F("Loading new ladder program"));
 		break;
 	}
+
+	static char *fname_tag = "filename=\"";
 
 	case TinyWebPutHandler::WRITE:
 		for (int i = 0; i < size; i++) {
 			D(Serial.write(*buffer));
-			cb.push(*buffer++);
+
 			switch(st) {
 			case search_begin:
+				cb.push(*buffer++);
 				if (cb.remain() < boundary_len-2) break;
 				if (cb.match(boundary+2, boundary_len-2)) {
-					st = search_data;
-					D(Serial.println("search_data"));
+					st = search_filename;
+					D(Serial.println("search_filename"));
+					cb.flush();
+					fname = "";
+				}
+				else {
+					cb.pop();
+				}
+				break;
+			case search_filename:
+				cb.push(*buffer++);
+				if (cb.remain() < strlen(fname_tag)) break;
+				if (cb.match(fname_tag, strlen(fname_tag))) {
+					st = in_filename;
+					D(Serial.println("in_filename"));
 					cb.flush();
 				}
 				else {
 					cb.pop();
 				}
 				break;
+			case in_filename:
+				if (*buffer == '\"') {
+					buffer++;
+					st = search_data;
+					D(Serial << F("fname=") << fname << "\n");
+					D(Serial.println("search_data"));
+				}
+				else {
+					fname += *buffer++;
+				}
+				break;
 			case search_data:
+				cb.push(*buffer++);
 				if (cb.remain() < 4) break;
 				if (cb.match("\r\n\r\n", 4)) {
 					st = in_data;
@@ -228,6 +265,7 @@ static void file_uploader_handler(TinyWebServer& web_server, TinyWebPutHandler::
 				}
 				break;
 			case in_data:
+				cb.push(*buffer++);
 				if (cb.remain() < boundary_len) break;
 				if (cb.match(boundary, boundary_len)) {
 					st = search_data;
@@ -252,13 +290,14 @@ static void file_uploader_handler(TinyWebServer& web_server, TinyWebPutHandler::
 		Client& client = web_server.get_client();
 		String status;
 		if (file_size > 0 && lduino.getProgramReady()) {
-			status += F("<font color='green'>New ladder program uploaded - file size: ");
-			status += file_size;
-			status += F(" bytes</font>");
+			status += fname;
+			status += F(" loaded");
 		}
 		else {
-			status += F("<font color='red'>Upload aborted</font>");
+			status += F("Upload failure");
 		}
+		Serial << status << '\n';
+		lduino.setStatus(status);
 		//main_page(client, status);
 		break;
 	}
