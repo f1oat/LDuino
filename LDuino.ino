@@ -153,7 +153,7 @@ void setup() {
 	xTaskCreate(
 		Task_Net
 		, (const portCHAR *) "Net"
-		, 600  // Stack size
+		, 500  // Stack size
 		, NULL
 		, 0  // Priority
 		, NULL);
@@ -161,7 +161,7 @@ void setup() {
 	xTaskCreate(
 		Task_Modbus
 		, (const portCHAR *) "Modbus"
-		, 256  // Stack size
+		, 150  // Stack size
 		, NULL
 		, 2  // Priority
 		, NULL);
@@ -169,7 +169,7 @@ void setup() {
 	xTaskCreate(
 		Task_PLC
 		, (const portCHAR *)"PLC"
-		, 128
+		, 150
 		, NULL
 		, 1 
 		, NULL);
@@ -236,6 +236,7 @@ void loop() {
 	//lduino.Engine();
 	if (doReset) {
 		Serial << F("Stack usage ") << sysinfo::stackUsage() << '\n';
+		Serial << sysinfo::DumpRTOS();
 		Serial << F("Reset requested\n");
 		delay(500);
 #ifndef USE_RTOS

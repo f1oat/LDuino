@@ -4,4 +4,5 @@ public:
 	static int freeRam();
 	static int unusedRam();
 	static int stackUsage();
+	static String DumpRTOS(void);
 };

@@ -1,6 +1,12 @@
 #include <Arduino.h>
 #include "sysinfo.h"
 
+#define USE_RTOS 1
+#ifdef USE_RTOS
+#include <Arduino_FreeRTOS.h>
+#include <task.h>
+#endif
+
 int sysinfo::freeRam()
 {
 	extern int __heap_start, *__brkval;
@@ -48,3 +54,29 @@ int sysinfo::unusedRam()
 	}
 	return count;
 }
+
+#ifdef USE_RTOS
+String sysinfo::DumpRTOS(void)
+{
+	TaskStatus_t *pxTaskStatusArray; 
+	UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
+	String result;
+	char line[32];
+
+	pxTaskStatusArray = (TaskStatus_t *)pvPortMalloc(uxArraySize * sizeof(TaskStatus_t));
+	if (pxTaskStatusArray == NULL) return "";
+
+	uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, uxArraySize, NULL);
+
+	result += F("Task        |Free stack\n");
+	result += F("------------------------\n");
+	for (byte x = 0; x < uxArraySize; x++)
+	{
+		sprintf(line, "%-12s|%10d\n", pxTaskStatusArray[x].pcTaskName, pxTaskStatusArray[x].usStackHighWaterMark);
+		result += line;
+	}
+		
+	vPortFree(pxTaskStatusArray);
+	return result;
+}
+#endif

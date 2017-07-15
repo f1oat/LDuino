@@ -152,7 +152,9 @@ function GetArduinoIO() {
     if (!statusOK) ToggleTrafficIndicator(false);
 
     request.onreadystatechange = function () {
-        if (this.readyState == XMLHttpRequest.DONE && this.status == 200) {
+        if (this.readyState != XMLHttpRequest.DONE) return;
+        setTimeout('GetArduinoIO()', 500);
+        if (this.status == 200) {
             if (this.responseXML != null) {
                 statusOK = true;
                 ToggleTrafficIndicator(true);
@@ -199,7 +201,6 @@ function GetArduinoIO() {
     request.send(null);
 
     statusOK = false;
-    setTimeout('GetArduinoIO()', 500);
     strToggle = "";
     strSetPWM = "";
 }
