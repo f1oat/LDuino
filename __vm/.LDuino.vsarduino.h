@@ -65,11 +65,17 @@ extern "C" void __cxa_pure_virtual() {;}
 #include <ModbusSerial.h>
 #include <TinyWebServer.cpp>
 #include <TinyWebServer.h>
+#include <global.h>
 #include <httpd-fsdata.h>
 #include <lduino_engine.cpp>
 #include <lduino_engine.h>
+#include <malloc.c>
 #include <plcweb.cpp>
 #include <plcweb.h>
+#include <sectionname.h>
+#include <stdlib_private.h>
+#include <sysinfo.cpp>
+#include <sysinfo.h>
 #include <xmlstring.cpp>
 #include <xmlstring.h>
 #endif

@@ -22,12 +22,12 @@
 #include <avr/wdt.h>
 #include <TimerOne.h>
 
-#include "global.h"
-
 #define USE_RTOS 1
 
 #ifdef USE_RTOS
 #include <Arduino_FreeRTOS.h>
+#include <semphr.h>
+SemaphoreHandle_t plcSemaphore = NULL;
 #endif
 
 #define noPinDefs         // Disable default pin definitions (X0, X1, ..., Y0, Y1, ...)
@@ -94,7 +94,11 @@ void setup_MODBUS()
 
 void pollPLC()
 {
+#ifndef USE_RTOS
 	lduino.Engine();
+#else
+	xSemaphoreGiveFromISR(plcSemaphore, NULL);
+#endif
 }
 
 extern  void(*_malloc_exception)(size_t);
@@ -143,10 +147,9 @@ void setup() {
 	customIO();			// Setup inputs and outputs for Controllino PLC
 	setup_MODBUS();
 
-#ifndef USE_RTOS
-	Timer1.initialize(lduino.getCycleMS() * 1000L);
-	Timer1.attachInterrupt(pollPLC);
-#else
+#ifdef USE_RTOS
+	plcSemaphore = xSemaphoreCreateBinary();
+
 	xTaskCreate(
 		Task_Net
 		, (const portCHAR *) "Net"
@@ -171,6 +174,10 @@ void setup() {
 		, 1 
 		, NULL);
 #endif
+	
+	Timer1.initialize(lduino.getCycleMS() * 1000L);
+	Timer1.attachInterrupt(pollPLC); 
+	
 	Serial << F("unusedRam ") << sysinfo::unusedRam() << '\n';
 	Serial << F("PLC ready\n");
 	lduino.setStatus(F("Ready"));
@@ -183,8 +190,7 @@ void Task_PLC(void *pvParameters)
 
 	for (;;) // A Task shall never return or exit.
 	{
-		pollPLC();
-		vTaskDelay(1);
+		if (xSemaphoreTake(plcSemaphore, portMAX_DELAY) == pdTRUE) lduino.Engine();
 	}
 }
 
