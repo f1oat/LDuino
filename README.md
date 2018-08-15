@@ -1,5 +1,5 @@
 # LDuino
-(C) 2016 Frederic RIBLE (frible@teaser.fr)
+(C) 2016-2018 Frederic RIBLE (f1oat@f1oat.org)
 
 LDuino is a PLC software originally designed for the "Controllino Maxi".
 It could be easily ported to any other Arduino based platform.
